@@ -3,7 +3,7 @@ import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
 import { filterByDate, sumByCategory, getTopMerchants, formatCurrency } from "@/utils/dataUtils";
-import type { RoastResult, APIResponse, Category } from "@/types";
+import type { RoastResult, APIResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
 
     const categoryTotals = sumByCategory(periodTransactions);
 
-    let worstCategory = "" as string;
+    let worstCategory = "";
     let worstAmount = 0;
-    for (const [cat, amount] of Object.entries(categoryTotals)) {
+    for (const [cat, amount] of Object.entries(categoryTotals) as [string, number][]) {
       if (amount > worstAmount) {
         worstAmount = amount;
         worstCategory = cat;
