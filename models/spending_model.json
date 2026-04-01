@@ -1,6 +1,6 @@
 {
   "model_type": "Ridge",
-  "training_date": "2026-04-01T14:27:18.781193",
+  "training_date": "2026-04-02T00:13:00.614370",
   "training_data": {
     "rows": 29,
     "date_range": "2016-01 to 2020-12",
@@ -197,6 +197,19 @@
         "Auto Payment": 314.16,
         "Other_spending": 3095.02
       }
+    },
+    "category_mae": {
+      "Uncategorized": 3331.61,
+      "Mortgage & Rent": 1295.26,
+      "Check": 1344.96,
+      "Home Improvement": 1031.37,
+      "Restaurants": 247.76,
+      "Furnishings": 715.47,
+      "Hotel": 384.47,
+      "Air Travel": 262.0,
+      "Home": 505.16,
+      "Auto Payment": 481.83,
+      "Other_spending": 1181.58
     }
   },
   "adjustments": {

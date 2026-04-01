@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
     }
 
     const totalSpent = monthTransactions
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "debit")
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const totalIncome = monthTransactions
-      .filter((t) => t.type === "income")
+      .filter((t) => t.type === "credit")
       .reduce((sum, t) => sum + t.amount, 0);
 
     const baseContext = buildLLMContext({ transactions: monthTransactions, profile });
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const expensesByCategory: Record<string, number> = {};
     const merchantMentions: string[] = [];
     for (const t of monthTransactions) {
-      if (t.type === "expense") {
+      if (t.type === "debit") {
         expensesByCategory[t.category] = (expensesByCategory[t.category] ?? 0) + Math.abs(t.amount);
       }
       if (merchantMentions.length < 5 && !merchantMentions.includes(t.description)) {
@@ -88,7 +88,7 @@ STRUCTURE:
 
 Write ONLY the narrative. No titles, headers, metadata, or sign-offs like "Yours truly."`;
 
-    const userMessage = `Month: ${monthName} ${year}. Total income: ${totalIncome}. Total spent: ${totalSpent}. Transactions: ${monthTransactions.length}. Top spending categories: ${JSON.stringify(expensesByCategory)}. Merchants mentioned: ${merchantMentions.join(", ")}. User balance: ${profile.currentBalance}. Monthly income: ${profile.monthlyIncome}.`;
+    const userMessage = `Month: ${monthName} ${year}. Total income: ${totalIncome}. Total spent: ${totalSpent}. Transactions: ${monthTransactions.length}. Top spending categories: ${JSON.stringify(expensesByCategory)}. Merchants mentioned: ${merchantMentions.join(", ")}. User balance: ${profile.currentBalance}. Monthly income: ${totalIncome}.`;
 
     const claudeResponse = await callClaude(systemPrompt, userMessage);
 

@@ -1,0 +1,422 @@
+[
+  {
+    "id": "chunk_001",
+    "topic": "dining_benchmarks",
+    "text": "Financial planners generally recommend keeping dining and restaurant spending below 10-15% of take-home pay. Consistently exceeding this threshold is one of the strongest predictors of low savings rates in working-age adults.",
+    "tags": ["dining", "restaurants", "benchmarks", "savings"]
+  },
+  {
+    "id": "chunk_002",
+    "topic": "dining_frequency",
+    "text": "The average American eats out 4-5 times per week. Those who cut to 2-3 times typically save $200-400 per month without feeling deprived, making dining frequency the single highest-leverage spending habit to change.",
+    "tags": ["dining", "restaurants", "frequency", "habits"]
+  },
+  {
+    "id": "chunk_003",
+    "topic": "dining_delivery_markup",
+    "text": "Food delivery apps add a 30-40% markup over dine-in prices through service fees, delivery charges, and inflated menu prices. A $15 meal becomes $22-25 delivered, turning a $300/month habit into $450.",
+    "tags": ["dining", "delivery", "markup", "fees"]
+  },
+  {
+    "id": "chunk_004",
+    "topic": "dining_social_spending",
+    "text": "Social dining accounts for 60% of restaurant spending in most budgets. Setting a weekly dining-out budget rather than per-occasion limits helps control this without sacrificing social life.",
+    "tags": ["dining", "social", "budget", "weekly"]
+  },
+  {
+    "id": "chunk_005",
+    "topic": "dining_weekend_pattern",
+    "text": "Weekend spending on dining and entertainment typically runs 2-3x weekday levels. Weekend spenders who pre-plan Friday-Sunday activities save an average of 25% on their monthly entertainment budget.",
+    "tags": ["dining", "weekend", "entertainment", "pattern"]
+  },
+  {
+    "id": "chunk_006",
+    "topic": "dining_lunch_trap",
+    "text": "Weekday lunches out average $12-15 per meal. Packing lunch 3 days per week saves $1,500-2,000 annually with minimal lifestyle impact, making it one of the easiest wins in personal finance.",
+    "tags": ["dining", "lunch", "savings", "easy"]
+  },
+  {
+    "id": "chunk_007",
+    "topic": "transport_benchmarks",
+    "text": "Transportation should ideally stay below 15% of gross income. This includes car payments, insurance, fuel, maintenance, and transit passes. Exceeding 20% signals over-commitment to vehicle costs.",
+    "tags": ["transport", "benchmarks", "car", "insurance"]
+  },
+  {
+    "id": "chunk_008",
+    "topic": "transport_car_costs",
+    "text": "The true cost of car ownership is $800-1,000 per month when factoring in depreciation, insurance, maintenance, fuel, and parking. Many owners only track the loan payment, underestimating real costs by 40-60%.",
+    "tags": ["transport", "car", "ownership", "hidden_costs"]
+  },
+  {
+    "id": "chunk_009",
+    "topic": "transport_rideshare",
+    "text": "Regular rideshare users spending over $300 per month would often save money owning or leasing a basic vehicle. Below $200 per month, rideshare remains cheaper than ownership in most cities.",
+    "tags": ["transport", "rideshare", "uber", "comparison"]
+  },
+  {
+    "id": "chunk_010",
+    "topic": "transport_fuel_efficiency",
+    "text": "Fuel costs vary 3-4x based on vehicle choice and driving habits. Switching from a truck (15 mpg) to a sedan (35 mpg) saves $1,200-1,800 annually at current fuel prices.",
+    "tags": ["transport", "fuel", "efficiency", "savings"]
+  },
+  {
+    "id": "chunk_011",
+    "topic": "transport_commute_cost",
+    "text": "The average American spends $8,500 annually on commuting. Remote or hybrid work arrangements that eliminate 2-3 commute days per week save $3,000-5,000 in direct transport costs.",
+    "tags": ["transport", "commute", "remote", "hybrid"]
+  },
+  {
+    "id": "chunk_012",
+    "topic": "transport_air_travel",
+    "text": "Booking flights 6-8 weeks in advance typically saves 20-30% over last-minute purchases. Using fare alerts and flexible dates can reduce annual air travel costs by $500-1,000 for frequent flyers.",
+    "tags": ["transport", "air_travel", "booking", "savings"]
+  },
+  {
+    "id": "chunk_013",
+    "topic": "housing_benchmarks",
+    "text": "The 28/36 rule recommends housing costs (mortgage/rent, insurance, taxes) stay below 28% of gross income, with total debt payments under 36%. Exceeding these limits significantly increases financial stress.",
+    "tags": ["housing", "rent", "mortgage", "benchmarks"]
+  },
+  {
+    "id": "chunk_014",
+    "topic": "housing_rent_ratio",
+    "text": "Spending over 30% of gross income on rent is classified as cost-burdened by HUD standards. Nearly 50% of renters in major US cities exceed this threshold, leaving insufficient room for savings.",
+    "tags": ["housing", "rent", "cost_burden", "ratio"]
+  },
+  {
+    "id": "chunk_015",
+    "topic": "housing_home_improvement",
+    "text": "Home improvement spending should be budgeted at 1-2% of home value annually for maintenance. Exceeding this without building equity suggests lifestyle upgrades disguised as necessary repairs.",
+    "tags": ["housing", "home_improvement", "maintenance", "budget"]
+  },
+  {
+    "id": "chunk_016",
+    "topic": "housing_utilities",
+    "text": "Utility costs (electric, gas, water, internet) typically run $200-400 per month for a household. Smart thermostats and LED lighting can reduce energy bills by 15-25% with minimal effort.",
+    "tags": ["housing", "utilities", "energy", "savings"]
+  },
+  {
+    "id": "chunk_017",
+    "topic": "housing_furnishings",
+    "text": "Furnishing spending spikes after moves and tends to exceed budgets by 40-60%. Setting a total furnishing budget before shopping and spreading purchases over 6-12 months prevents impulse buying.",
+    "tags": ["housing", "furnishings", "budget", "impulse"]
+  },
+  {
+    "id": "chunk_018",
+    "topic": "housing_insurance",
+    "text": "Bundling home and auto insurance saves 10-25%. Shopping insurance annually rather than auto-renewing prevents rate creep that adds $200-500 per year to premiums over time.",
+    "tags": ["housing", "insurance", "bundling", "savings"]
+  },
+  {
+    "id": "chunk_019",
+    "topic": "entertainment_benchmarks",
+    "text": "Entertainment and recreation should stay within 5-10% of take-home pay. This includes streaming services, hobbies, concerts, sports, and gaming. Exceeding 15% usually indicates lifestyle inflation.",
+    "tags": ["entertainment", "benchmarks", "recreation", "hobbies"]
+  },
+  {
+    "id": "chunk_020",
+    "topic": "entertainment_streaming",
+    "text": "The average household subscribes to 4-5 streaming services at $50-70 per month. Auditing subscriptions quarterly and rotating services (subscribe for one month, binge, cancel) saves $300-500 annually.",
+    "tags": ["entertainment", "streaming", "subscriptions", "audit"]
+  },
+  {
+    "id": "chunk_021",
+    "topic": "entertainment_events",
+    "text": "Live entertainment (concerts, sports, theater) averages $200-400 per event including tickets, parking, and concessions. Setting a quarterly entertainment budget prevents these irregular expenses from derailing monthly plans.",
+    "tags": ["entertainment", "events", "concerts", "budget"]
+  },
+  {
+    "id": "chunk_022",
+    "topic": "entertainment_gaming",
+    "text": "Gaming spending (hardware, subscriptions, in-app purchases) averages $60-100 per month for active gamers. In-app purchases are the silent budget killer, often exceeding the cost of the games themselves.",
+    "tags": ["entertainment", "gaming", "in_app", "purchases"]
+  },
+  {
+    "id": "chunk_023",
+    "topic": "subscriptions_creep",
+    "text": "The average consumer underestimates their monthly subscription spending by 2-3x. A quarterly subscription audit - listing every recurring charge and canceling unused ones - typically recovers $50-150 per month.",
+    "tags": ["subscriptions", "creep", "audit", "recurring"]
+  },
+  {
+    "id": "chunk_024",
+    "topic": "subscriptions_free_trials",
+    "text": "Free trial conversions account for 40% of unwanted subscriptions. Setting calendar reminders 2 days before trial expiry prevents automatic charges that often go unnoticed for months.",
+    "tags": ["subscriptions", "free_trial", "auto_renew", "cancel"]
+  },
+  {
+    "id": "chunk_025",
+    "topic": "subscriptions_annual_vs_monthly",
+    "text": "Annual subscription plans save 15-30% over monthly billing. For services you have used consistently for 6+ months, switching to annual billing is almost always the right move.",
+    "tags": ["subscriptions", "annual", "monthly", "billing"]
+  },
+  {
+    "id": "chunk_026",
+    "topic": "subscriptions_sharing",
+    "text": "Family or group plans for streaming, software, and cloud storage cost 30-50% less per person. Splitting a $20/month family plan 4 ways costs $5 each versus $15 for individual plans.",
+    "tags": ["subscriptions", "sharing", "family", "group"]
+  },
+  {
+    "id": "chunk_027",
+    "topic": "subscriptions_hidden",
+    "text": "Hidden subscriptions (gym memberships, app renewals, software licenses) average $100-200 per month across consumers. Bank statement reviews catch charges that autopay masks from awareness.",
+    "tags": ["subscriptions", "hidden", "gym", "autopay"]
+  },
+  {
+    "id": "chunk_028",
+    "topic": "subscriptions_price_increases",
+    "text": "Subscription services raise prices 5-10% annually, relying on subscriber inertia. Reviewing charges after price increase notifications and comparing alternatives prevents gradual cost inflation.",
+    "tags": ["subscriptions", "price_increase", "inertia", "alternatives"]
+  },
+  {
+    "id": "chunk_029",
+    "topic": "rule_50_30_20",
+    "text": "The 50/30/20 rule allocates 50% of after-tax income to needs (housing, food, transport), 30% to wants (dining, entertainment, shopping), and 20% to savings and debt repayment.",
+    "tags": ["budgeting", "50_30_20", "rule", "allocation"]
+  },
+  {
+    "id": "chunk_030",
+    "topic": "rule_50_30_20_needs",
+    "text": "If needs exceed 50% of income, the first priority is reducing fixed costs - refinancing, downsizing housing, or switching insurance. Cutting variable spending (wants) provides relief but does not solve structural overspending.",
+    "tags": ["budgeting", "needs", "fixed_costs", "structural"]
+  },
+  {
+    "id": "chunk_031",
+    "topic": "rule_50_30_20_wants",
+    "text": "The 30% wants allocation is not a minimum - it is a ceiling. Those saving aggressively often run wants at 15-20%, redirecting the difference to investments or debt payoff.",
+    "tags": ["budgeting", "wants", "ceiling", "aggressive_saving"]
+  },
+  {
+    "id": "chunk_032",
+    "topic": "rule_80_20_simple",
+    "text": "The simpler 80/20 rule says save 20% first, spend 80% on everything else. This works better for people who find detailed budgeting overwhelming - automate the 20% and spend the rest guilt-free.",
+    "tags": ["budgeting", "80_20", "simple", "automate"]
+  },
+  {
+    "id": "chunk_033",
+    "topic": "emergency_fund_3_months",
+    "text": "A 3-month emergency fund is the minimum safety net for dual-income households with stable employment. It covers unexpected job loss, medical bills, or major repairs without touching retirement savings.",
+    "tags": ["emergency", "fund", "3_months", "safety"]
+  },
+  {
+    "id": "chunk_034",
+    "topic": "emergency_fund_6_months",
+    "text": "A 6-month emergency fund is recommended for single-income households, self-employed individuals, or those in volatile industries. It provides breathing room to find the right next role rather than accepting the first offer.",
+    "tags": ["emergency", "fund", "6_months", "self_employed"]
+  },
+  {
+    "id": "chunk_035",
+    "topic": "emergency_fund_12_months",
+    "text": "A 12-month emergency fund suits high earners with specialized skills, business owners, or those approaching retirement. Replacing a $200k+ salary takes 6-12 months on average in competitive markets.",
+    "tags": ["emergency", "fund", "12_months", "high_earner"]
+  },
+  {
+    "id": "chunk_036",
+    "topic": "emergency_fund_location",
+    "text": "Emergency funds belong in high-yield savings accounts earning 4-5% APY, not checking accounts (0.01%) or investments (volatile). The fund must be liquid within 1-2 business days and not subject to market risk.",
+    "tags": ["emergency", "fund", "high_yield", "savings_account"]
+  },
+  {
+    "id": "chunk_037",
+    "topic": "emergency_fund_building",
+    "text": "Building an emergency fund from zero takes 12-18 months for most people saving 10-15% of income. Starting with a $1,000 starter fund, then building to one month, then three, makes the goal less overwhelming.",
+    "tags": ["emergency", "fund", "building", "starter"]
+  },
+  {
+    "id": "chunk_038",
+    "topic": "lifestyle_inflation_definition",
+    "text": "Lifestyle inflation occurs when spending rises proportionally with income, keeping savings rates flat despite higher earnings. A 20% raise that leads to 20% more spending produces zero additional wealth.",
+    "tags": ["lifestyle", "inflation", "income", "spending"]
+  },
+  {
+    "id": "chunk_039",
+    "topic": "lifestyle_inflation_signals",
+    "text": "Warning signs of lifestyle inflation include upgrading cars after raises, moving to pricier apartments annually, defaulting to premium options, and normalizing luxury spending as baseline rather than occasional treats.",
+    "tags": ["lifestyle", "inflation", "signals", "warning"]
+  },
+  {
+    "id": "chunk_040",
+    "topic": "lifestyle_inflation_prevention",
+    "text": "The antidote to lifestyle inflation is the 50% rule: bank at least 50% of every raise or bonus before adjusting lifestyle. This builds wealth while still allowing gradual quality-of-life improvements.",
+    "tags": ["lifestyle", "inflation", "prevention", "raise"]
+  },
+  {
+    "id": "chunk_041",
+    "topic": "lifestyle_inflation_housing",
+    "text": "Housing is the largest driver of lifestyle inflation. Each housing upgrade locks in higher fixed costs for years. Staying in a modest home for 3-5 years after income growth creates outsized savings.",
+    "tags": ["lifestyle", "inflation", "housing", "fixed_costs"]
+  },
+  {
+    "id": "chunk_042",
+    "topic": "pay_yourself_first",
+    "text": "Pay-yourself-first means automating savings transfers on payday before any discretionary spending. This reverses the default from 'spend then save' to 'save then spend', dramatically improving savings rates.",
+    "tags": ["savings", "automate", "pay_yourself_first", "habits"]
+  },
+  {
+    "id": "chunk_043",
+    "topic": "pay_yourself_first_automation",
+    "text": "Automated transfers to savings should happen within 24 hours of receiving income. Manual saving relies on willpower, which depletes throughout the month. Automation removes the decision entirely.",
+    "tags": ["savings", "automation", "willpower", "transfer"]
+  },
+  {
+    "id": "chunk_044",
+    "topic": "pay_yourself_first_increase",
+    "text": "Increasing automated savings by 1% every quarter is painless individually but compounds to 4% annual increases. Starting at 10% and adding 1% per quarter reaches 20% within 2.5 years.",
+    "tags": ["savings", "gradual", "increase", "compound"]
+  },
+  {
+    "id": "chunk_045",
+    "topic": "irregular_income_management",
+    "text": "Freelancers and variable-income earners should budget from their lowest recent 3-month income, treating anything above that as bonus savings. This prevents overspending in high-earning months.",
+    "tags": ["irregular", "income", "freelance", "variable"]
+  },
+  {
+    "id": "chunk_046",
+    "topic": "irregular_income_buffer",
+    "text": "Variable income earners need a larger cash buffer - 2-3 months of expenses minimum in checking, separate from emergency savings. This smooths income volatility without touching long-term reserves.",
+    "tags": ["irregular", "income", "buffer", "cash"]
+  },
+  {
+    "id": "chunk_047",
+    "topic": "irregular_income_tax",
+    "text": "Self-employed individuals should set aside 25-30% of every payment for taxes immediately. Spending pre-tax income is the most common financial mistake among freelancers and contractors.",
+    "tags": ["irregular", "income", "tax", "self_employed"]
+  },
+  {
+    "id": "chunk_048",
+    "topic": "savings_rate_10_percent",
+    "text": "A 10% savings rate is the minimum for retirement readiness when starting in your 20s. Starting at 30 requires 15%, at 40 requires 25%. Every decade of delay roughly doubles the required savings rate.",
+    "tags": ["savings", "rate", "10_percent", "retirement"]
+  },
+  {
+    "id": "chunk_049",
+    "topic": "savings_rate_20_percent",
+    "text": "A 20% savings rate enables both retirement funding and meaningful progress toward medium-term goals (home purchase, education, career transitions). This is the target that most financial planners recommend.",
+    "tags": ["savings", "rate", "20_percent", "goals"]
+  },
+  {
+    "id": "chunk_050",
+    "topic": "savings_rate_50_percent",
+    "text": "A 50% savings rate, central to the FIRE movement, enables financial independence in roughly 17 years regardless of income level. This requires aggressive spending optimization but not necessarily high income.",
+    "tags": ["savings", "rate", "50_percent", "FIRE"]
+  },
+  {
+    "id": "chunk_051",
+    "topic": "grocery_benchmarks",
+    "text": "The USDA moderate food plan costs $300-350 per person per month for home cooking. Spending significantly above this suggests premium grocery habits, food waste, or impulse purchases at checkout.",
+    "tags": ["groceries", "benchmarks", "food", "home_cooking"]
+  },
+  {
+    "id": "chunk_052",
+    "topic": "grocery_meal_planning",
+    "text": "Meal planning reduces grocery spending by 20-30% by eliminating impulse purchases and food waste. The average household wastes $1,500 per year in discarded food, most of which is preventable.",
+    "tags": ["groceries", "meal_planning", "waste", "savings"]
+  },
+  {
+    "id": "chunk_053",
+    "topic": "grocery_store_strategy",
+    "text": "Shopping with a list reduces grocery spending by 23% on average. Store layouts are designed to maximize impulse buys - sticking to the perimeter and avoiding center aisles cuts unnecessary purchases.",
+    "tags": ["groceries", "shopping", "list", "strategy"]
+  },
+  {
+    "id": "chunk_054",
+    "topic": "shopping_impulse",
+    "text": "The 48-hour rule for non-essential purchases over $50 eliminates 60-70% of impulse buys. If you still want it after 48 hours, it is likely a genuine want rather than a dopamine-driven impulse.",
+    "tags": ["shopping", "impulse", "48_hour", "rule"]
+  },
+  {
+    "id": "chunk_055",
+    "topic": "shopping_online",
+    "text": "Online shopping carts have a 70% abandonment rate for a reason - adding items to cart satisfies the acquisition urge without spending. Using cart abandonment as a cooling-off period saves hundreds monthly.",
+    "tags": ["shopping", "online", "cart", "abandonment"]
+  },
+  {
+    "id": "chunk_056",
+    "topic": "shopping_cost_per_use",
+    "text": "Evaluating purchases by cost-per-use rather than sticker price changes spending decisions. A $200 jacket worn 100 times ($2/use) is better value than a $30 jacket worn 5 times ($6/use).",
+    "tags": ["shopping", "cost_per_use", "value", "quality"]
+  },
+  {
+    "id": "chunk_057",
+    "topic": "health_spending",
+    "text": "Health spending (gym, supplements, wellness) should be viewed as investment, not expense - but only if actually used. The average gym membership goes unused 50% of the time, making it a $600/year donation.",
+    "tags": ["health", "gym", "membership", "utilization"]
+  },
+  {
+    "id": "chunk_058",
+    "topic": "health_insurance",
+    "text": "Choosing the right health insurance plan saves $1,000-3,000 annually. High-deductible plans with HSAs benefit healthy individuals; PPO plans benefit those with regular medical needs.",
+    "tags": ["health", "insurance", "HSA", "deductible"]
+  },
+  {
+    "id": "chunk_059",
+    "topic": "category_trap_coffee",
+    "text": "The daily coffee habit costs $1,200-1,800 per year at cafe prices. While the 'latte factor' is often overstated, it illustrates how small daily habits compound into significant annual spending.",
+    "tags": ["category", "trap", "coffee", "daily_habit"]
+  },
+  {
+    "id": "chunk_060",
+    "topic": "category_trap_convenience",
+    "text": "Convenience spending (delivery fees, express shipping, premium parking) adds $100-300 per month for most urban professionals. These micro-costs fly under the radar because each one feels insignificant.",
+    "tags": ["category", "trap", "convenience", "fees"]
+  },
+  {
+    "id": "chunk_061",
+    "topic": "category_trap_recurring",
+    "text": "Recurring charges are the most dangerous spending category because they require no active decision to continue. One deliberate annual audit of all recurring charges typically saves $100-200 per month.",
+    "tags": ["category", "trap", "recurring", "audit"]
+  },
+  {
+    "id": "chunk_062",
+    "topic": "category_trap_aspirational",
+    "text": "Aspirational purchases - items bought for who you want to be rather than who you are - account for 15-20% of discretionary spending. Exercise equipment, craft supplies, and course subscriptions are common examples.",
+    "tags": ["category", "trap", "aspirational", "unused"]
+  },
+  {
+    "id": "chunk_063",
+    "topic": "debt_priority",
+    "text": "High-interest debt (credit cards at 18-25% APR) should be eliminated before investing beyond an employer match. No investment reliably returns more than credit card interest charges cost.",
+    "tags": ["debt", "credit_card", "priority", "interest"]
+  },
+  {
+    "id": "chunk_064",
+    "topic": "debt_snowball_vs_avalanche",
+    "text": "The debt avalanche method (highest interest first) saves the most money. The debt snowball (smallest balance first) builds momentum faster. Choose avalanche for math, snowball for motivation.",
+    "tags": ["debt", "snowball", "avalanche", "payoff"]
+  },
+  {
+    "id": "chunk_065",
+    "topic": "auto_payment_benchmarks",
+    "text": "Auto loan payments should stay below 10% of gross monthly income. The average new car payment is $700/month, pushing many buyers into the 15-20% range and crowding out savings capacity.",
+    "tags": ["auto", "payment", "loan", "benchmarks"]
+  },
+  {
+    "id": "chunk_066",
+    "topic": "auto_depreciation",
+    "text": "New cars depreciate 20-30% in the first year and 50-60% over five years. Buying 2-3 year old certified pre-owned vehicles captures most of the depreciation savings while retaining warranty coverage.",
+    "tags": ["auto", "depreciation", "used", "certified"]
+  },
+  {
+    "id": "chunk_067",
+    "topic": "spending_tracking_awareness",
+    "text": "People who track spending save 15-20% more than those who do not. The act of recording expenses creates awareness friction that naturally reduces impulsive purchases, even without strict budgets.",
+    "tags": ["tracking", "awareness", "habits", "savings"]
+  },
+  {
+    "id": "chunk_068",
+    "topic": "spending_cash_vs_card",
+    "text": "Card spending averages 12-18% higher than cash spending for the same purchases. The physical pain of handing over cash activates loss aversion that digital transactions bypass entirely.",
+    "tags": ["spending", "cash", "card", "psychology"]
+  },
+  {
+    "id": "chunk_069",
+    "topic": "hotel_travel_budgeting",
+    "text": "Hotel and travel costs should be budgeted as annual expenses divided by 12, not as monthly spikes. Setting aside $200-400 monthly in a travel fund prevents vacation spending from derailing other goals.",
+    "tags": ["hotel", "travel", "budget", "annual"]
+  },
+  {
+    "id": "chunk_070",
+    "topic": "check_payments_awareness",
+    "text": "Large check payments (rent, tuition, contractors) should be tracked separately from daily spending. These irregular large transactions can mask underlying daily spending patterns when lumped into monthly totals.",
+    "tags": ["check", "payments", "tracking", "awareness"]
+  }
+]

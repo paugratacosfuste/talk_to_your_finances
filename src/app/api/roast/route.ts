@@ -8,7 +8,7 @@ import type { RoastResult, APIResponse } from "@/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { period } = body;
+    const { period, persona, ragContext } = body;
 
     if (period !== "week" && period !== "month") {
       return NextResponse.json(
@@ -56,13 +56,23 @@ export async function POST(request: NextRequest) {
 
     const topMerchants = getTopMerchants(periodTransactions, 5);
     const totalSpent = periodTransactions
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "debit")
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    const totalIncome = periodTransactions
+      .filter((t) => t.type === "credit")
+      .reduce((sum, t) => sum + t.amount, 0);
 
     const baseContext = buildLLMContext({ transactions: periodTransactions, profile });
 
-    const systemPrompt = `${baseContext}
+    const personaBlock = persona
+      ? `\nUser persona: ${persona}. Factor this into your roast.\n`
+      : "";
 
+    const ragBlock = ragContext ? `\n${ragContext}\n` : "";
+
+    const systemPrompt = `${baseContext}
+${ragBlock}${personaBlock}
 You are a brutally honest financial roast comedian — think a mix between a disappointed parent looking at a credit card statement and a stand-up comedian who just discovered their audience's bank accounts. Your job: roast the user's spending over the past ${period}.
 
 TONE & STYLE RULES:
@@ -80,7 +90,7 @@ EXAMPLE TONE (do NOT copy, just match the energy):
 After your roast, on a new line, output ONLY this XML tag with a realistic savings estimate as a plain integer:
 <savings_potential>NUMBER</savings_potential>`;
 
-    const userMessage = `Roast my spending for the past ${period}. Total spent: ${formatCurrency(totalSpent, profile.currency)}. Category breakdown: ${JSON.stringify(categoryTotals)}. Worst category: "${worstCategory}" at ${formatCurrency(worstAmount, profile.currency)}. Top merchants: ${JSON.stringify(topMerchants)}. My monthly income is ${formatCurrency(profile.monthlyIncome, profile.currency)} and my balance is ${formatCurrency(profile.currentBalance, profile.currency)}.`;
+    const userMessage = `Roast my spending for the past ${period}. Total spent: ${formatCurrency(totalSpent, profile.currency)}. Category breakdown: ${JSON.stringify(categoryTotals)}. Worst category: "${worstCategory}" at ${formatCurrency(worstAmount, profile.currency)}. Top merchants: ${JSON.stringify(topMerchants)}. My estimated monthly income is ${formatCurrency(totalIncome, profile.currency)} and my balance is ${formatCurrency(profile.currentBalance, profile.currency)}.`;
 
     const claudeResponse = await callClaude(systemPrompt, userMessage);
 

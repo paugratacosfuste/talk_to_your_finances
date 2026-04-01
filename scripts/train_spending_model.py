@@ -24,8 +24,15 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, cross_val_score
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+try:
+    from xgboost import XGBRegressor
+    HAS_XGBOOST = True
+except ImportError:
+    HAS_XGBOOST = False
 
 warnings.filterwarnings("ignore")
 
@@ -395,6 +402,26 @@ def build_artifact(
         f"to {int(monthly_raw['year'].max())}-{int(monthly_raw['month'].max()):02d}"
     )
 
+    # Per-category MAE: how much each category's predicted average deviates
+    # from actuals across all months
+    category_mae: dict[str, float] = {}
+    for cat in cat_cols:
+        if cat not in monthly_raw.columns:
+            continue
+        errors = []
+        for m in range(1, 13):
+            mask = monthly_raw["month_of_year"] == m
+            if not mask.any():
+                continue
+            actual_vals = monthly_raw.loc[mask, cat].values
+            predicted = category_predictions.get(str(m), {}).get(cat, 0.0)
+            for actual in actual_vals:
+                errors.append(abs(float(actual) - predicted))
+        if errors:
+            category_mae[cat] = round(float(np.mean(errors)), 2)
+        else:
+            category_mae[cat] = 0.0
+
     return {
         "model_type": best_name,
         "training_date": datetime.now().isoformat(),
@@ -413,6 +440,7 @@ def build_artifact(
         "predictions": {
             "monthly_baseline": monthly_baseline,
             "category_predictions": category_predictions,
+            "category_mae": category_mae,
         },
         "adjustments": {
             "lag_sensitivity": round(lag_sensitivity, 6),

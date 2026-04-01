@@ -164,7 +164,7 @@ function computePersonalFinanceModel(
   for (const t of transactions) {
     const month = t.date.slice(0, 7);
     if (!monthlyData[month]) monthlyData[month] = { income: 0, expenses: 0 };
-    if (t.type === "income") {
+    if (t.type === "credit") {
       monthlyData[month].income += t.amount;
     } else {
       monthlyData[month].expenses += Math.abs(t.amount);
@@ -189,7 +189,7 @@ function computePersonalFinanceModel(
   // Top expense categories by monthly average
   const categoryTotals: Record<string, number> = {};
   for (const t of transactions) {
-    if (t.type === "expense") {
+    if (t.type === "debit") {
       categoryTotals[t.category] =
         (categoryTotals[t.category] ?? 0) + Math.abs(t.amount);
     }
@@ -483,6 +483,9 @@ export async function POST(request: NextRequest) {
     const { transactions, profile } = getMockData();
     const baseContext = buildLLMContext({ transactions, profile });
 
+    // --- Compute personal finance model (needed for fallback + simulation) ---
+    const model = computePersonalFinanceModel(transactions);
+
     // --- Resolve purchase amount ---
     let purchaseAmount: number;
     if (amount !== undefined && amount !== null) {
@@ -494,15 +497,12 @@ export async function POST(request: NextRequest) {
       );
       purchaseAmount = parseInt(estimateResponse.trim(), 10);
       if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
-        purchaseAmount = Math.round(profile.monthlyIncome * 0.5);
+        purchaseAmount = Math.round(model.avgMonthlyIncome * 0.5);
       }
     }
 
-    // --- Run macro fetch + personal finance model in parallel ---
-    const [macro, model] = await Promise.all([
-      fetchMacroIndicators(profile.currency),
-      Promise.resolve(computePersonalFinanceModel(transactions)),
-    ]);
+    // --- Fetch macro indicators ---
+    const macro = await fetchMacroIndicators(profile.currency);
 
     // --- ML-enhanced spending prediction ---
     const mlPrediction = getMLPrediction(model);

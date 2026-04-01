@@ -1,8 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import RoastCard from "./RoastCard";
+import { DEFAULT_CURRENCY } from "@/data/constants";
+import { getMockData } from "@/data/mockData";
+import { sumByCategory, getTotalSpent, getTotalIncome } from "@/utils/dataUtils";
+import { loadEmbeddings, loadChunks, retrieveRelevantChunks } from "@/utils/ragRetriever";
 import type { RoastResult, APIResponse } from "@/types";
+
+interface Persona {
+  label: string;
+  description: string;
+  top_features: string[];
+}
+
+interface GroundingChunk {
+  id: string;
+  topic: string;
+  text: string;
+  tags: string[];
+}
 
 const LOADING_MESSAGES = [
   "Scanning your transactions...",
@@ -19,6 +36,26 @@ export default function RoastView() {
   const [error, setError] = useState<string | null>(null);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
   const [showResult, setShowResult] = useState(false);
+  const [persona, setPersona] = useState<Persona | null>(null);
+  const [groundingSources, setGroundingSources] = useState<GroundingChunk[]>([]);
+  const [groundingOpen, setGroundingOpen] = useState(false);
+  const ragDataRef = useRef<{
+    embeddings: Awaited<ReturnType<typeof loadEmbeddings>>;
+    chunks: Awaited<ReturnType<typeof loadChunks>>;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/persona.json")
+      .then((res) => res.json())
+      .then((data) => setPersona(data))
+      .catch(() => {});
+
+    Promise.all([loadEmbeddings(), loadChunks()])
+      .then(([embeddings, chunks]) => {
+        ragDataRef.current = { embeddings, chunks };
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!loading) return;
@@ -34,11 +71,58 @@ export default function RoastView() {
     setLoading(true);
     setError(null);
     setShowResult(false);
+    setGroundingSources([]);
     try {
+      const personaContext = persona
+        ? `${persona.label}. Key traits: ${persona.top_features.join(", ")}`
+        : undefined;
+
+      // Build user profile for RAG retrieval
+      let ragContext: string | undefined;
+      if (ragDataRef.current) {
+        const { transactions } = getMockData();
+        const categoryTotals = sumByCategory(transactions);
+        const totalSpent = getTotalSpent(transactions);
+        const totalIncome = getTotalIncome(transactions);
+        const savingsRate = totalIncome > 0
+          ? Math.round(((totalIncome - totalSpent) / totalIncome) * 100)
+          : 0;
+
+        const topCats = Object.entries(categoryTotals)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([cat, amt]) => {
+            const pct = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
+            return `${pct}% on ${cat.toLowerCase()}`;
+          });
+
+        const profileQuery = `user spends ${topCats.join(", ")}, saves ${savingsRate}% of income${
+          persona ? `, persona: ${persona.label}` : ""
+        }`;
+
+        const chunks = retrieveRelevantChunks(
+          profileQuery,
+          ragDataRef.current.embeddings,
+          ragDataRef.current.chunks
+        );
+        setGroundingSources(chunks);
+
+        if (chunks.length > 0) {
+          ragContext = [
+            "--- FINANCIAL KNOWLEDGE CONTEXT ---",
+            "The following evidence-based guidelines are relevant to this user's profile.",
+            "Use them to ground your commentary. Cite the principle, not the source.",
+            "",
+            ...chunks.map((c, i) => `${i + 1}. ${c.text}`),
+            "---",
+          ].join("\n");
+        }
+      }
+
       const response = await fetch("/api/roast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period }),
+        body: JSON.stringify({ period, persona: personaContext, ragContext }),
       });
       const data: APIResponse<RoastResult> = await response.json();
       if (data.success && data.data) {
@@ -96,7 +180,25 @@ export default function RoastView() {
         </button>
       </div>
 
-      {/* Empty state — before any interaction */}
+      {/* Persona card */}
+      {persona && (
+        <div className="rounded-2xl border border-purple-200 bg-purple-50 px-6 py-4">
+          <h4 className="text-sm font-bold text-purple-800">{persona.label}</h4>
+          <p className="text-sm text-purple-700 mt-1">{persona.description}</p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {persona.top_features.map((feat, i) => (
+              <span
+                key={i}
+                className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"
+              >
+                {feat}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state - before any interaction */}
       {!loading && !result && !error && (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-12 text-center">
           <p className="text-4xl mb-3" aria-hidden="true">&#x1F525;</p>
@@ -137,11 +239,53 @@ export default function RoastView() {
       {/* Result with fade-in */}
       {!loading && result && (
         <div
-          className={`transition-all duration-500 ${
+          className={`space-y-4 transition-all duration-500 ${
             showResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
           }`}
         >
-          <RoastCard result={result} currency="ZAR" />
+          <RoastCard result={result} currency={DEFAULT_CURRENCY} />
+
+          {/* Grounding Sources - collapsible */}
+          {groundingSources.length > 0 && (
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <button
+                onClick={() => setGroundingOpen(!groundingOpen)}
+                className="w-full px-5 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Grounding Sources
+                  </span>
+                  <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded">
+                    {groundingSources.length} references
+                  </span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                    groundingOpen ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {groundingOpen && (
+                <div className="px-5 py-3 border-t border-gray-100 space-y-2">
+                  {groundingSources.map((chunk) => (
+                    <div key={chunk.id} className="text-xs">
+                      <span className="inline-block bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium mr-2">
+                        {chunk.topic.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-gray-500">{chunk.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
