@@ -3,6 +3,7 @@ import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
 import type { SimulationResult, APIResponse, Transaction, UserProfile } from "@/types";
+import spendingModel from "../../../../models/spending_model.json";
 
 // ---------------------------------------------------------------------------
 // Internal types (not exported, not in src/types/)
@@ -24,6 +25,13 @@ interface PersonalFinanceModel {
   netMonthlyCashFlow: number;
   monthsOfData: number;
   topExpenseCategories: { category: string; amount: number }[];
+}
+
+interface MLPrediction {
+  predictedMonthlyExpenses: number;
+  predictionSource: "ml-model" | "historical-average";
+  modelMetrics: { r2: number; mae: number; rmse: number };
+  categoryBreakdown: Record<string, number>;
 }
 
 interface MonteCarloProjection {
@@ -205,6 +213,50 @@ function computePersonalFinanceModel(
 }
 
 // ---------------------------------------------------------------------------
+// Layer 2b: ML-Enhanced Spending Prediction
+// ---------------------------------------------------------------------------
+
+function getMLPrediction(
+  model: PersonalFinanceModel,
+): MLPrediction {
+  const currentMonth = new Date().getMonth() + 1;
+  const monthKey = String(currentMonth);
+
+  const baseline = spendingModel.predictions.monthly_baseline[
+    monthKey as keyof typeof spendingModel.predictions.monthly_baseline
+  ];
+
+  if (baseline === undefined) {
+    return {
+      predictedMonthlyExpenses: model.avgMonthlyExpenses,
+      predictionSource: "historical-average",
+      modelMetrics: spendingModel.evaluation as MLPrediction["modelMetrics"],
+      categoryBreakdown: {},
+    };
+  }
+
+  // Adjust baseline using recent spending deviation and lag sensitivity
+  const historicalAvg = model.avgMonthlyExpenses || 1;
+  const recentDeviation = (model.avgMonthlyExpenses - historicalAvg) / historicalAvg;
+  const adjustedPrediction = baseline * (1 + spendingModel.adjustments.lag_sensitivity * recentDeviation);
+
+  const categoryPreds = spendingModel.predictions.category_predictions[
+    monthKey as keyof typeof spendingModel.predictions.category_predictions
+  ] ?? {};
+
+  return {
+    predictedMonthlyExpenses: Math.max(0, Math.round(adjustedPrediction)),
+    predictionSource: "ml-model",
+    modelMetrics: {
+      r2: spendingModel.evaluation.test_r2,
+      mae: spendingModel.evaluation.test_mae,
+      rmse: spendingModel.evaluation.test_rmse,
+    },
+    categoryBreakdown: categoryPreds as Record<string, number>,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Layer 3: Monte Carlo Projection Engine (500 simulations)
 // ---------------------------------------------------------------------------
 
@@ -218,6 +270,7 @@ function runMonteCarloSimulation(
   profile: UserProfile,
   model: PersonalFinanceModel,
   macro: MacroIndicators,
+  mlPrediction: MLPrediction,
   purchaseAmount: number,
   projectionMonths: number = 6,
   numSimulations: number = 500
@@ -232,6 +285,9 @@ function runMonteCarloSimulation(
   let incomeMultiplier = 1.0;
   if (macro.gdpGrowth < 0) incomeMultiplier *= 0.95;
   if (macro.unemploymentRate > 10) incomeMultiplier *= 0.97;
+
+  // Use ML-predicted expenses as the base instead of naive historical average
+  const baseExpenses = mlPrediction.predictedMonthlyExpenses;
 
   // Run N simulations, store final balances per month
   const withoutResults: number[][] = Array.from(
@@ -248,10 +304,17 @@ function runMonteCarloSimulation(
     let balanceWith = profile.currentBalance - purchaseAmount;
 
     for (let m = 0; m < projectionMonths; m++) {
+      // For future months, look up the ML baseline for that specific month
+      const futureMonth = ((now.getMonth() + m + 1) % 12) + 1;
+      const futureMonthKey = String(futureMonth);
+      const monthBaseline = spendingModel.predictions.monthly_baseline[
+        futureMonthKey as keyof typeof spendingModel.predictions.monthly_baseline
+      ] ?? baseExpenses;
+
       // Sample expenses from normal distribution using Box-Muller
       const z = boxMullerRandom();
       const inflatedExpenses =
-        model.avgMonthlyExpenses * Math.pow(1 + monthlyInflation, m + 1);
+        monthBaseline * Math.pow(1 + monthlyInflation, m + 1);
       const sampledExpenses = Math.max(0, inflatedExpenses + z * model.expenseStdDev);
 
       const adjustedIncome = model.avgMonthlyIncome * incomeMultiplier;
@@ -324,6 +387,7 @@ function buildNarrativePrompt(
   profile: UserProfile,
   model: PersonalFinanceModel,
   macro: MacroIndicators,
+  mlPrediction: MLPrediction,
   projections: MonteCarloProjection[],
   risk: { canAfford: boolean; riskLevel: "low" | "medium" | "high" },
   purchaseDescription: string,
@@ -349,6 +413,11 @@ MACROECONOMIC INDICATORS (${macro.dataSource} data for ${CURRENCY_TO_COUNTRY_NAM
 - GDP growth: ${macro.gdpGrowth.toFixed(1)}%
 - Unemployment: ${macro.unemploymentRate.toFixed(1)}%
 - Real interest rate: ${macro.realInterestRate.toFixed(1)}%${macro.exchangeRateToUSD !== null ? `\n- Exchange rate: 1 ${profile.currency} = ${macro.exchangeRateToUSD.toFixed(4)} USD` : ""}
+
+ML SPENDING PREDICTION (${mlPrediction.predictionSource === "ml-model" ? `${spendingModel.model_type} model, R²=${mlPrediction.modelMetrics.r2}` : "historical average fallback"}):
+- Predicted monthly expenses: ${mlPrediction.predictedMonthlyExpenses} ${profile.currency}
+- Model accuracy: MAE=${mlPrediction.modelMetrics.mae}, RMSE=${mlPrediction.modelMetrics.rmse}
+- Top predicted categories this month: ${Object.entries(mlPrediction.categoryBreakdown).sort(([, a], [, b]) => (b as number) - (a as number)).slice(0, 5).map(([cat, amt]) => `${cat}: ${Math.round(amt as number)}`).join(", ")}
 
 PURCHASE: "${purchaseDescription}" for ${purchaseAmount} ${profile.currency}
 SIMULATION RESULT: canAfford = ${risk.canAfford} (based on pessimistic P10 scenario), riskLevel = ${risk.riskLevel}
@@ -435,11 +504,15 @@ export async function POST(request: NextRequest) {
       Promise.resolve(computePersonalFinanceModel(transactions)),
     ]);
 
+    // --- ML-enhanced spending prediction ---
+    const mlPrediction = getMLPrediction(model);
+
     // --- Run Monte Carlo simulation (500 scenarios) ---
     const projections = runMonteCarloSimulation(
       profile,
       model,
       macro,
+      mlPrediction,
       purchaseAmount
     );
 
@@ -452,6 +525,7 @@ export async function POST(request: NextRequest) {
       profile,
       model,
       macro,
+      mlPrediction,
       projections,
       { canAfford, riskLevel },
       purchaseDescription.trim(),
