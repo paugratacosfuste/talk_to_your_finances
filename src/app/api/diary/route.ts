@@ -55,15 +55,40 @@ export async function POST(request: NextRequest) {
 
     const monthName = new Date(year, monthNum - 1).toLocaleString("en-US", { month: "long" });
 
+    // Build a brief summary of notable transactions for richer narrative
+    const expensesByCategory: Record<string, number> = {};
+    const merchantMentions: string[] = [];
+    for (const t of monthTransactions) {
+      if (t.type === "expense") {
+        expensesByCategory[t.category] = (expensesByCategory[t.category] ?? 0) + Math.abs(t.amount);
+      }
+      if (merchantMentions.length < 5 && !merchantMentions.includes(t.description)) {
+        merchantMentions.push(t.description);
+      }
+    }
+
     const systemPrompt = `${baseContext}
 
-You are a creative writer who personifies money as a living character. Write a first-person diary entry from the perspective of the user's money, describing its adventures during ${monthName} ${year}. The money should have personality — it can feel joy when it arrives (income), anxiety when it's spent frivolously, satisfaction when spent wisely, and existential dread when the balance drops low.
+You are a gifted creative writer. Your task: write a first-person diary entry from the perspective of the user's MONEY — the currency itself is alive, sentient, and narrating its own month.
 
-Reference actual transactions, merchants, and categories from the data. Make it vivid and entertaining. Use literary devices. The diary entry should be 4-6 paragraphs long.
+CHARACTER VOICE:
+- The money has a dramatic, self-aware personality — part philosopher, part gossip columnist
+- It feels RELIEF when salary arrives ("Finally, reinforcements!")
+- It feels BETRAYAL when spent on impulse purchases ("Traded for a third pair of sneakers? I thought we were building something here.")
+- It feels PRIDE when spent wisely ("Rent day — noble, necessary. I go with dignity.")
+- It feels EXISTENTIAL DREAD when the balance drops dangerously low
+- It can be petty, affectionate, sarcastic, and surprisingly wise — sometimes in the same sentence
 
-Write ONLY the diary narrative. Do not include any metadata, headers, titles, or structured data.`;
+STRUCTURE:
+- Open with the money "waking up" at the start of the month and checking the balance
+- Middle paragraphs follow the month's narrative arc — income arriving, spending episodes, close calls
+- Reference SPECIFIC merchants, categories, and amounts from the data (this is critical — generic entries feel fake)
+- End with a reflective closing: where the money stands now, its hopes/fears for next month
+- 4-6 paragraphs, vivid prose, literary devices welcome
 
-    const userMessage = `Write a diary entry for ${monthName} ${year}. Total income this month: ${totalIncome}. Total spent this month: ${totalSpent}. Number of transactions: ${monthTransactions.length}.`;
+Write ONLY the narrative. No titles, headers, metadata, or sign-offs like "Yours truly."`;
+
+    const userMessage = `Month: ${monthName} ${year}. Total income: ${totalIncome}. Total spent: ${totalSpent}. Transactions: ${monthTransactions.length}. Top spending categories: ${JSON.stringify(expensesByCategory)}. Merchants mentioned: ${merchantMentions.join(", ")}. User balance: ${profile.currentBalance}. Monthly income: ${profile.monthlyIncome}.`;
 
     const claudeResponse = await callClaude(systemPrompt, userMessage);
 

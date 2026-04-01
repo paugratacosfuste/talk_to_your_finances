@@ -2,14 +2,321 @@ import { NextRequest, NextResponse } from "next/server";
 import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
-import type { SimulationResult, APIResponse } from "@/types";
+import type { SimulationResult, APIResponse, Transaction, UserProfile } from "@/types";
+
+// ---------------------------------------------------------------------------
+// Internal types (not exported, not in src/types/)
+// ---------------------------------------------------------------------------
+
+interface MacroIndicators {
+  inflationRate: number;
+  gdpGrowth: number;
+  unemploymentRate: number;
+  realInterestRate: number;
+  exchangeRateToUSD: number | null;
+  dataSource: "live" | "fallback";
+}
+
+interface PersonalFinanceModel {
+  avgMonthlyIncome: number;
+  avgMonthlyExpenses: number;
+  expenseStdDev: number;
+  netMonthlyCashFlow: number;
+  monthsOfData: number;
+  topExpenseCategories: { category: string; amount: number }[];
+}
+
+interface ProjectionMonth {
+  date: string;
+  withPurchase: number;
+  withoutPurchase: number;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 1: Macroeconomic Data Fetch
+// ---------------------------------------------------------------------------
+
+const CURRENCY_TO_COUNTRY: Record<string, string> = {
+  ZAR: "ZA",
+  USD: "US",
+  EUR: "DE",
+  GBP: "GB",
+  BRL: "BR",
+  INR: "IN",
+  JPY: "JP",
+  AUD: "AU",
+  CAD: "CA",
+  MXN: "MX",
+  CHF: "CH",
+  CNY: "CN",
+  KRW: "KR",
+  SEK: "SE",
+  NOK: "NO",
+};
+
+async function fetchWorldBankIndicator(
+  countryCode: string,
+  indicatorCode: string,
+  fallback: number
+): Promise<number> {
+  try {
+    const url = `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicatorCode}?format=json&per_page=5&date=2020:2026`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return fallback;
+
+    const json = await response.json();
+    if (!Array.isArray(json) || json.length < 2 || !Array.isArray(json[1])) {
+      return fallback;
+    }
+
+    // Entries are sorted most-recent-first; find first non-null value
+    for (const entry of json[1]) {
+      if (entry.value !== null && entry.value !== undefined) {
+        return Number(entry.value);
+      }
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function fetchExchangeRate(currency: string): Promise<number | null> {
+  try {
+    const url = `https://api.frankfurter.dev/v2/rates?base=${currency}&quotes=USD`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+
+    const json = await response.json();
+    return json.rates?.USD ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchMacroIndicators(currency: string): Promise<MacroIndicators> {
+  const countryCode = CURRENCY_TO_COUNTRY[currency] ?? "US";
+
+  const results = await Promise.allSettled([
+    fetchWorldBankIndicator(countryCode, "FP.CPI.TOTL.ZG", 5.0),
+    fetchWorldBankIndicator(countryCode, "NY.GDP.MKTP.KD.ZG", 1.5),
+    fetchWorldBankIndicator(countryCode, "SL.UEM.TOTL.ZS", 6.0),
+    fetchWorldBankIndicator(countryCode, "FR.INR.RINR", 2.5),
+    currency !== "USD" ? fetchExchangeRate(currency) : Promise.resolve(null),
+  ]);
+
+  const get = <T>(r: PromiseSettledResult<T>, fb: T): T =>
+    r.status === "fulfilled" ? r.value : fb;
+
+  const hasLiveData = results.slice(0, 4).some((r) => r.status === "fulfilled");
+
+  return {
+    inflationRate: get(results[0], 5.0) as number,
+    gdpGrowth: get(results[1], 1.5) as number,
+    unemploymentRate: get(results[2], 6.0) as number,
+    realInterestRate: get(results[3], 2.5) as number,
+    exchangeRateToUSD: get(results[4], null) as number | null,
+    dataSource: hasLiveData ? "live" : "fallback",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Layer 2: Personal Finance Model
+// ---------------------------------------------------------------------------
+
+function computePersonalFinanceModel(
+  transactions: Transaction[]
+): PersonalFinanceModel {
+  const monthlyData: Record<string, { income: number; expenses: number }> = {};
+
+  for (const t of transactions) {
+    const month = t.date.slice(0, 7);
+    if (!monthlyData[month]) monthlyData[month] = { income: 0, expenses: 0 };
+    if (t.type === "income") {
+      monthlyData[month].income += t.amount;
+    } else {
+      monthlyData[month].expenses += Math.abs(t.amount);
+    }
+  }
+
+  const months = Object.keys(monthlyData);
+  const monthCount = months.length || 1;
+
+  const totalIncome = months.reduce((s, m) => s + monthlyData[m].income, 0);
+  const totalExpenses = months.reduce((s, m) => s + monthlyData[m].expenses, 0);
+  const avgMonthlyIncome = totalIncome / monthCount;
+  const avgMonthlyExpenses = totalExpenses / monthCount;
+
+  // Expense volatility: standard deviation of monthly expenses
+  const expenseValues = months.map((m) => monthlyData[m].expenses);
+  const mean = avgMonthlyExpenses;
+  const variance =
+    expenseValues.reduce((s, v) => s + (v - mean) ** 2, 0) / monthCount;
+  const expenseStdDev = Math.sqrt(variance);
+
+  // Top expense categories by monthly average
+  const categoryTotals: Record<string, number> = {};
+  for (const t of transactions) {
+    if (t.type === "expense") {
+      categoryTotals[t.category] =
+        (categoryTotals[t.category] ?? 0) + Math.abs(t.amount);
+    }
+  }
+  const topExpenseCategories = Object.entries(categoryTotals)
+    .map(([category, total]) => ({
+      category,
+      amount: Math.round(total / monthCount),
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  return {
+    avgMonthlyIncome: Math.round(avgMonthlyIncome),
+    avgMonthlyExpenses: Math.round(avgMonthlyExpenses),
+    expenseStdDev: Math.round(expenseStdDev),
+    netMonthlyCashFlow: Math.round(avgMonthlyIncome - avgMonthlyExpenses),
+    monthsOfData: monthCount,
+    topExpenseCategories,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Layer 3: Projection Engine (deterministic math)
+// ---------------------------------------------------------------------------
+
+function computeProjections(
+  profile: UserProfile,
+  model: PersonalFinanceModel,
+  macro: MacroIndicators,
+  purchaseAmount: number
+): ProjectionMonth[] {
+  const now = new Date();
+  const projections: ProjectionMonth[] = [];
+
+  // Monthly inflation factor from annual rate
+  const monthlyInflation =
+    Math.pow(1 + macro.inflationRate / 100, 1 / 12) - 1;
+
+  // Income risk adjustment based on macro conditions
+  let incomeMultiplier = 1.0;
+  if (macro.gdpGrowth < 0) incomeMultiplier *= 0.95;
+  if (macro.unemploymentRate > 10) incomeMultiplier *= 0.97;
+
+  let balanceWithout = profile.currentBalance;
+  let balanceWith = profile.currentBalance - purchaseAmount;
+
+  for (let i = 1; i <= 6; i++) {
+    const future = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const dateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}`;
+
+    // Expenses grow with compounding inflation each month
+    const adjustedExpenses =
+      model.avgMonthlyExpenses * Math.pow(1 + monthlyInflation, i);
+    const adjustedIncome = model.avgMonthlyIncome * incomeMultiplier;
+
+    balanceWithout = balanceWithout + adjustedIncome - adjustedExpenses;
+    balanceWith = balanceWith + adjustedIncome - adjustedExpenses;
+
+    projections.push({
+      date: dateStr,
+      withPurchase: Math.round(balanceWith),
+      withoutPurchase: Math.round(balanceWithout),
+    });
+  }
+
+  return projections;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 4: Risk Assessment (deterministic rules)
+// ---------------------------------------------------------------------------
+
+function computeRiskAssessment(
+  projections: ProjectionMonth[],
+  model: PersonalFinanceModel
+): { canAfford: boolean; riskLevel: "low" | "medium" | "high" } {
+  const canAfford = projections.every((p) => p.withPurchase >= 0);
+
+  const minBalance = Math.min(...projections.map((p) => p.withPurchase));
+  const monthlyExpenses = model.avgMonthlyExpenses || 1;
+
+  if (minBalance < 0 || minBalance < monthlyExpenses) {
+    return { canAfford, riskLevel: "high" };
+  } else if (minBalance < 2 * monthlyExpenses) {
+    return { canAfford, riskLevel: "medium" };
+  } else {
+    return { canAfford, riskLevel: "low" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Claude Narrative Prompt (interpretation only — no number generation)
+// ---------------------------------------------------------------------------
+
+function buildNarrativePrompt(
+  baseContext: string,
+  profile: UserProfile,
+  model: PersonalFinanceModel,
+  macro: MacroIndicators,
+  projections: ProjectionMonth[],
+  risk: { canAfford: boolean; riskLevel: "low" | "medium" | "high" },
+  purchaseDescription: string,
+  purchaseAmount: number
+): { systemPrompt: string; userMessage: string } {
+  const systemPrompt = `${baseContext}
+
+You are a sharp, empathetic financial advisor interpreting a COMPUTED financial simulation. All numbers, projections, and risk scores below were calculated by a simulation engine using real financial data and macroeconomic indicators. Your job is to write a rich narrative that explains the results — do NOT change any numbers or override the risk assessment.
+
+PERSONAL FINANCE (from transaction history, ${model.monthsOfData} months of data):
+- Current balance: ${profile.currentBalance} ${profile.currency}
+- Avg monthly income: ${model.avgMonthlyIncome} ${profile.currency}
+- Avg monthly expenses: ${model.avgMonthlyExpenses} ${profile.currency}
+- Net monthly cash flow: ${model.netMonthlyCashFlow} ${profile.currency}
+- Expense volatility (std dev): ${model.expenseStdDev} ${profile.currency}
+- Top spending: ${model.topExpenseCategories.map((c) => `${c.category}: ${c.amount}/mo`).join(", ")}
+
+MACROECONOMIC INDICATORS (${macro.dataSource} data for ${CURRENCY_TO_COUNTRY[profile.currency] ?? "US"}):
+- Inflation: ${macro.inflationRate.toFixed(1)}% annually
+- GDP growth: ${macro.gdpGrowth.toFixed(1)}%
+- Unemployment: ${macro.unemploymentRate.toFixed(1)}%
+- Real interest rate: ${macro.realInterestRate.toFixed(1)}%${macro.exchangeRateToUSD !== null ? `\n- Exchange rate: 1 ${profile.currency} = ${macro.exchangeRateToUSD.toFixed(4)} USD` : ""}
+
+PURCHASE: "${purchaseDescription}" for ${purchaseAmount} ${profile.currency}
+SIMULATION RESULT: canAfford = ${risk.canAfford}, riskLevel = ${risk.riskLevel}
+
+PROJECTED BALANCES (computed with inflation-adjusted expenses):
+${projections.map((p) => `  ${p.date}: without = ${p.withoutPurchase}, with = ${p.withPurchase}`).join("\n")}
+
+NARRATIVE GUIDELINES:
+- Write 2-3 paragraphs, conversational but data-driven
+- Reference specific numbers: balance, cash flow, inflation rate, projected minimums
+- Explain WHY the risk level is what it is (e.g., "Your cushion drops to X, which is less than one month of expenses")
+- Weave in macro context naturally: "With inflation at X%, your monthly expenses are projected to rise from Y to Z over 6 months"
+- If high unemployment or negative GDP, mention it as a risk factor
+- If they can easily afford it, be encouraging. If risky, be direct but constructive — suggest timing or saving strategies
+- End with a concrete, actionable recommendation
+
+Write ONLY the narrative. No titles, XML, JSON, or formatting markers. Just clean prose.`;
+
+  const userMessage = `I'm considering buying: ${purchaseDescription}. The cost is ${purchaseAmount} ${profile.currency}. Please interpret my simulation results.`;
+
+  return { systemPrompt, userMessage };
+}
+
+// ---------------------------------------------------------------------------
+// POST Handler
+// ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { purchaseDescription, amount } = body;
 
-    if (!purchaseDescription || typeof purchaseDescription !== "string" || purchaseDescription.trim().length === 0) {
+    if (
+      !purchaseDescription ||
+      typeof purchaseDescription !== "string" ||
+      purchaseDescription.trim().length === 0
+    ) {
       return NextResponse.json(
         { success: false, error: "Purchase description is required" } satisfies APIResponse<never>,
         { status: 400 }
@@ -28,86 +335,62 @@ export async function POST(request: NextRequest) {
     const { transactions, profile } = getMockData();
     const baseContext = buildLLMContext({ transactions, profile });
 
-    const now = new Date();
-    const projectionMonths: string[] = [];
-    for (let i = 1; i <= 6; i++) {
-      const future = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      const y = future.getFullYear();
-      const m = String(future.getMonth() + 1).padStart(2, "0");
-      projectionMonths.push(`${y}-${m}`);
-    }
-
-    const systemPrompt = `${baseContext}
-
-You are a precise financial analyst. The user is considering a purchase. Analyze whether they can afford it and project the financial impact over the next 6 months.
-
-You MUST respond in the following exact format with no additional text outside these tags:
-
-<analysis>
-Your 2-3 paragraph analysis of the purchase's financial impact. Be specific about numbers. Mention the user's current balance, monthly income, typical expenses, and how this purchase fits in.
-</analysis>
-<can_afford>true OR false</can_afford>
-<risk_level>low OR medium OR high</risk_level>
-<projected_balances>
-<entry date="${projectionMonths[0]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-<entry date="${projectionMonths[1]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-<entry date="${projectionMonths[2]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-<entry date="${projectionMonths[3]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-<entry date="${projectionMonths[4]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-<entry date="${projectionMonths[5]}" with_purchase="NUMBER" without_purchase="NUMBER" />
-</projected_balances>
-
-Rules for projected_balances:
-- Use the exact date values shown above for each entry
-- NUMBER must be an integer (no decimals, no currency symbols, no commas)
-- without_purchase should reflect the user's natural balance trajectory based on historical income and spending patterns
-- with_purchase should subtract the purchase amount from the first month and reflect any ongoing cost impact
-- Be realistic based on the user's actual income and spending patterns from the data`;
-
-    const amountText = amount
-      ? `The cost is approximately ${amount} ${profile.currency}.`
-      : "Please estimate a reasonable cost based on the description.";
-
-    const userMessage = `I'm considering buying: ${purchaseDescription.trim()}. ${amountText} Analyze the impact and project my balances for the next 6 months.`;
-
-    const claudeResponse = await callClaude(systemPrompt, userMessage);
-
-    const analysisMatch = claudeResponse.match(/<analysis>([\s\S]*?)<\/analysis>/);
-    const canAffordMatch = claudeResponse.match(/<can_afford>(true|false)<\/can_afford>/);
-    const riskMatch = claudeResponse.match(/<risk_level>(low|medium|high)<\/risk_level>/);
-    const balanceMatches = [
-      ...claudeResponse.matchAll(/<entry date="([^"]+)" with_purchase="([^"]+)" without_purchase="([^"]+)" \/>/g),
-    ];
-
-    if (!analysisMatch || !canAffordMatch || !riskMatch || balanceMatches.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Failed to parse simulation results. Please try again." } satisfies APIResponse<never>,
-        { status: 500 }
+    // --- Resolve purchase amount ---
+    let purchaseAmount: number;
+    if (amount !== undefined && amount !== null) {
+      purchaseAmount = amount;
+    } else {
+      const estimateResponse = await callClaude(
+        "You are a price estimation tool. Given a purchase description and a currency, respond with ONLY a single integer representing a reasonable price. No text, no symbols, just the number.",
+        `Estimate the price of "${purchaseDescription.trim()}" in ${profile.currency}.`
       );
+      purchaseAmount = parseInt(estimateResponse.trim(), 10);
+      if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
+        purchaseAmount = Math.round(profile.monthlyIncome * 0.5);
+      }
     }
 
-    const projectedBalances = balanceMatches.map((match) => ({
-      date: match[1],
-      withPurchase: parseInt(match[2], 10),
-      withoutPurchase: parseInt(match[3], 10),
-    }));
+    // --- Run macro fetch + personal finance model in parallel ---
+    const [macro, model] = await Promise.all([
+      fetchMacroIndicators(profile.currency),
+      Promise.resolve(computePersonalFinanceModel(transactions)),
+    ]);
 
-    const hasInvalidBalances = projectedBalances.some(
-      (b) => isNaN(b.withPurchase) || isNaN(b.withoutPurchase)
+    // --- Compute projections (deterministic math) ---
+    const projections = computeProjections(
+      profile,
+      model,
+      macro,
+      purchaseAmount
     );
 
-    if (hasInvalidBalances) {
-      return NextResponse.json(
-        { success: false, error: "Failed to parse simulation results. Please try again." } satisfies APIResponse<never>,
-        { status: 500 }
-      );
-    }
+    // --- Compute risk assessment (deterministic rules) ---
+    const { canAfford, riskLevel } = computeRiskAssessment(projections, model);
 
+    // --- Get Claude narrative interpretation ---
+    const { systemPrompt, userMessage } = buildNarrativePrompt(
+      baseContext,
+      profile,
+      model,
+      macro,
+      projections,
+      { canAfford, riskLevel },
+      purchaseDescription.trim(),
+      purchaseAmount
+    );
+
+    const analysis = await callClaude(systemPrompt, userMessage);
+
+    // --- Assemble response ---
     const result: SimulationResult = {
-      analysis: analysisMatch[1].trim(),
-      projectedBalances,
-      canAfford: canAffordMatch[1] === "true",
-      riskLevel: riskMatch[1] as "low" | "medium" | "high",
+      analysis: analysis.trim(),
+      projectedBalances: projections.map((p) => ({
+        date: p.date,
+        withPurchase: p.withPurchase,
+        withoutPurchase: p.withoutPurchase,
+      })),
+      canAfford,
+      riskLevel,
     };
 
     return NextResponse.json(
@@ -115,7 +398,8 @@ Rules for projected_balances:
       { status: 200 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "An unexpected error occurred";
+    const message =
+      error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json(
       { success: false, error: message } satisfies APIResponse<never>,
       { status: 500 }

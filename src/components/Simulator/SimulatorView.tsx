@@ -1,24 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PurchaseInput from "./PurchaseInput";
 import ImpactTimeline from "./ImpactTimeline";
 import type { SimulationResult, APIResponse } from "@/types";
 
 const RISK_STYLES: Record<string, string> = {
-  low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800",
-  high: "bg-red-100 text-red-800",
+  low: "bg-green-100 text-green-800 border-green-200",
+  medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  high: "bg-red-100 text-red-800 border-red-200",
 };
+
+const LOADING_MESSAGES = [
+  "Analyzing your transaction history...",
+  "Fetching macroeconomic indicators...",
+  "Computing inflation-adjusted projections...",
+  "Assessing financial risk...",
+  "Generating personalized analysis...",
+  "Almost there...",
+];
 
 export default function SimulatorView() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
+  const [showResult, setShowResult] = useState(false);
+
+  useEffect(() => {
+    if (!loading) return;
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % LOADING_MESSAGES.length;
+      setLoadingMsg(LOADING_MESSAGES[index]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handleSimulate = async (purchaseDescription: string, amount?: number) => {
     setLoading(true);
     setError(null);
+    setShowResult(false);
     try {
       const response = await fetch("/api/simulate", {
         method: "POST",
@@ -28,6 +50,7 @@ export default function SimulatorView() {
       const data: APIResponse<SimulationResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
+        setTimeout(() => setShowResult(true), 50);
       } else {
         setError(data.error || "Something went wrong");
       }
@@ -49,58 +72,100 @@ export default function SimulatorView() {
 
       <PurchaseInput onSubmit={handleSimulate} loading={loading} />
 
-      {loading && (
-        <div className="space-y-3">
-          <div className="h-4 bg-blue-100 rounded animate-pulse w-3/4" />
-          <div className="h-4 bg-blue-100 rounded animate-pulse w-full" />
-          <div className="h-4 bg-blue-100 rounded animate-pulse w-5/6" />
-          <div className="h-48 bg-blue-50 rounded-lg animate-pulse" />
+      {/* Empty state */}
+      {!loading && !result && !error && (
+        <div className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/50 px-6 py-12 text-center">
+          <p className="text-4xl mb-3" aria-hidden="true">&#x1F52E;</p>
+          <p className="text-gray-600 font-medium">What are you thinking of buying?</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Enter a purchase above and we&apos;ll run a real simulation using your financial data, live macroeconomic indicators, and inflation projections.
+          </p>
         </div>
       )}
 
+      {/* Loading state */}
+      {loading && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-6 py-8 text-center space-y-4">
+          <div className="flex justify-center gap-1">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+          <p className="text-sm text-blue-700 font-medium transition-opacity duration-300">
+            {loadingMsg}
+          </p>
+        </div>
+      )}
+
+      {/* Error state with retry */}
       {error && (
         <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-2 text-sm font-medium text-red-600 hover:text-red-800 underline"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
+      {/* Result with fade-in */}
       {!loading && result && (
-        <div className="space-y-6">
+        <div
+          className={`space-y-6 transition-all duration-500 ${
+            showResult ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+          }`}
+        >
+          {/* Badges */}
           <div className="flex flex-wrap items-center gap-3">
             <span
-              className={`inline-block px-3 py-1 rounded-full text-sm font-medium capitalize ${RISK_STYLES[result.riskLevel]}`}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border capitalize ${RISK_STYLES[result.riskLevel]}`}
             >
               {result.riskLevel} risk
             </span>
             <span
-              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border ${
                 result.canAfford
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
+                  ? "bg-green-100 text-green-800 border-green-200"
+                  : "bg-red-100 text-red-800 border-red-200"
               }`}
             >
               {result.canAfford ? "You can afford this" : "This might be risky"}
             </span>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-900">Analysis</h3>
+          {/* Analysis card */}
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-500 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white">Analysis</h3>
+              <span className="text-xs bg-white/20 text-white px-2.5 py-1 rounded-full">
+                Data-powered simulation
+              </span>
             </div>
             <div className="px-6 py-5 space-y-4">
               {result.analysis.split("\n\n").filter(Boolean).map((paragraph, index) => (
-                <p key={index} className="text-gray-700 leading-relaxed">
+                <p key={index} className="text-gray-700 leading-relaxed text-[15px]">
                   {paragraph}
                 </p>
               ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-900">Projected Balance</h3>
+          {/* Chart card */}
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">6-Month Projection</h3>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                  Inflation-adjusted
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Green = without purchase, Red = with purchase
+              </p>
             </div>
-            <div className="px-6 py-5">
+            <div className="px-4 py-5">
               <ImpactTimeline projectedBalances={result.projectedBalances} />
             </div>
           </div>
