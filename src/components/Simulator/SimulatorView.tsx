@@ -14,8 +14,9 @@ const RISK_STYLES: Record<string, string> = {
 const LOADING_MESSAGES = [
   "Analyzing your transaction history...",
   "Fetching macroeconomic indicators...",
-  "Computing inflation-adjusted projections...",
-  "Assessing financial risk...",
+  "Running 500 Monte Carlo simulations...",
+  "Computing confidence bands (P10/P50/P90)...",
+  "Adjusting for inflation and GDP growth...",
   "Generating personalized analysis...",
   "Almost there...",
 ];
@@ -140,7 +141,7 @@ export default function SimulatorView() {
             <div className="bg-gradient-to-r from-blue-600 to-indigo-500 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Analysis</h3>
               <span className="text-xs bg-white/20 text-white px-2.5 py-1 rounded-full">
-                Country-specific CPI data
+                Monte Carlo simulation (500 scenarios)
               </span>
             </div>
             <div className="px-6 py-5 space-y-4">
@@ -158,11 +159,11 @@ export default function SimulatorView() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">6-Month Projection</h3>
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                  CPI-adjusted projections
+                  P10/P50/P90 confidence bands
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">
-                Green = without purchase, Red = with purchase
+                Solid lines = median (P50), Shaded bands = P10–P90 range
               </p>
             </div>
             <div className="px-4 py-5">

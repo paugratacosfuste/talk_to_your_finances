@@ -297,12 +297,13 @@ function runMonteCarloSimulation(
 // ---------------------------------------------------------------------------
 
 function computeRiskAssessment(
-  projections: ProjectionMonth[],
+  projections: MonteCarloProjection[],
   model: PersonalFinanceModel
 ): { canAfford: boolean; riskLevel: "low" | "medium" | "high" } {
-  const canAfford = projections.every((p) => p.withPurchase >= 0);
+  // Use P10 (pessimistic) scenario for conservative risk assessment
+  const canAfford = projections.every((p) => p.withPurchaseP10 >= 0);
 
-  const minBalance = Math.min(...projections.map((p) => p.withPurchase));
+  const minBalance = Math.min(...projections.map((p) => p.withPurchaseP10));
   const monthlyExpenses = model.avgMonthlyExpenses || 1;
 
   if (minBalance < 0 || minBalance < monthlyExpenses) {
@@ -323,14 +324,17 @@ function buildNarrativePrompt(
   profile: UserProfile,
   model: PersonalFinanceModel,
   macro: MacroIndicators,
-  projections: ProjectionMonth[],
+  projections: MonteCarloProjection[],
   risk: { canAfford: boolean; riskLevel: "low" | "medium" | "high" },
   purchaseDescription: string,
   purchaseAmount: number
 ): { systemPrompt: string; userMessage: string } {
+  const lastMonth = projections[projections.length - 1];
+  const minP10 = Math.min(...projections.map((p) => p.withPurchaseP10));
+
   const systemPrompt = `${baseContext}
 
-You are a sharp, empathetic financial advisor interpreting a COMPUTED financial simulation. All numbers, projections, and risk scores below were calculated by a simulation engine using real financial data and macroeconomic indicators. Your job is to write a rich narrative that explains the results — do NOT change any numbers or override the risk assessment.
+You are a sharp, empathetic financial advisor interpreting a MONTE CARLO financial simulation (500 scenarios). All numbers, projections, and risk scores below were computed by a simulation engine using real financial data, macroeconomic indicators, and expense volatility modeling. Your job is to write a rich narrative that explains the results — do NOT change any numbers or override the risk assessment.
 
 PERSONAL FINANCE (from transaction history, ${model.monthsOfData} months of data):
 - Current balance: ${profile.currentBalance} ${profile.currency}
@@ -347,24 +351,33 @@ MACROECONOMIC INDICATORS (${macro.dataSource} data for ${CURRENCY_TO_COUNTRY_NAM
 - Real interest rate: ${macro.realInterestRate.toFixed(1)}%${macro.exchangeRateToUSD !== null ? `\n- Exchange rate: 1 ${profile.currency} = ${macro.exchangeRateToUSD.toFixed(4)} USD` : ""}
 
 PURCHASE: "${purchaseDescription}" for ${purchaseAmount} ${profile.currency}
-SIMULATION RESULT: canAfford = ${risk.canAfford}, riskLevel = ${risk.riskLevel}
+SIMULATION RESULT: canAfford = ${risk.canAfford} (based on pessimistic P10 scenario), riskLevel = ${risk.riskLevel}
 
-PROJECTED BALANCES (computed with inflation-adjusted expenses):
-${projections.map((p) => `  ${p.date}: without = ${p.withoutPurchase}, with = ${p.withPurchase}`).join("\n")}
+MONTE CARLO PROJECTED BALANCES (500 simulations, with purchase):
+${projections.map((p) => `  ${p.date}: P10 (pessimistic) = ${p.withPurchaseP10}, P50 (median) = ${p.withPurchase}, P90 (optimistic) = ${p.withPurchaseP90}`).join("\n")}
+
+MONTE CARLO PROJECTED BALANCES (500 simulations, without purchase):
+${projections.map((p) => `  ${p.date}: P10 = ${p.withoutPurchaseP10}, P50 = ${p.withoutPurchase}, P90 = ${p.withoutPurchaseP90}`).join("\n")}
+
+KEY STATS:
+- Worst-case (P10) minimum balance with purchase: ${minP10} ${profile.currency}
+- Median balance at 6 months with purchase: ${lastMonth.withPurchase} ${profile.currency}
+- Median balance at 6 months without purchase: ${lastMonth.withoutPurchase} ${profile.currency}
+- Spread at 6 months (P90 - P10) with purchase: ${lastMonth.withPurchaseP90 - lastMonth.withPurchaseP10} ${profile.currency}
 
 NARRATIVE GUIDELINES:
 - Write 2-3 paragraphs, conversational but data-driven
-- Macroeconomic data is sourced for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "the global economy"} based on the user's ${profile.currency} currency — mention this naturally (e.g., "With ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "global"} inflation running at X%...")
-- Reference specific numbers: balance, cash flow, inflation rate, projected minimums
-- Explain WHY the risk level is what it is (e.g., "Your cushion drops to X, which is less than one month of expenses")
-- Weave in macro context naturally: "With inflation at X%, your monthly expenses are projected to rise from Y to Z over 6 months"
-- If high unemployment or negative GDP, mention it as a risk factor
-- If they can easily afford it, be encouraging. If risky, be direct but constructive — suggest timing or saving strategies
+- This is a Monte Carlo simulation — reference the range of outcomes naturally: "In the median scenario, your balance will be X. Even in a pessimistic scenario (10th percentile), you'd still have Y."
+- Mention the confidence band spread to convey uncertainty: "Your balance could range from X to Y depending on spending variability"
+- Macroeconomic data is sourced for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "the global economy"} based on the user's ${profile.currency} currency — mention this naturally
+- Reference specific numbers: balance, cash flow, inflation rate, P10/P50/P90 values
+- Explain WHY the risk level is what it is — note that risk is assessed against the pessimistic scenario
+- If they can easily afford it, be encouraging. If risky, be direct but constructive
 - End with a concrete, actionable recommendation
 
 Write ONLY the narrative. No titles, XML, JSON, or formatting markers. Just clean prose.`;
 
-  const userMessage = `I'm considering buying: ${purchaseDescription}. The cost is ${purchaseAmount} ${profile.currency}. Please interpret my simulation results.`;
+  const userMessage = `I'm considering buying: ${purchaseDescription}. The cost is ${purchaseAmount} ${profile.currency}. Please interpret my Monte Carlo simulation results.`;
 
   return { systemPrompt, userMessage };
 }
@@ -422,8 +435,8 @@ export async function POST(request: NextRequest) {
       Promise.resolve(computePersonalFinanceModel(transactions)),
     ]);
 
-    // --- Compute projections (deterministic math) ---
-    const projections = computeProjections(
+    // --- Run Monte Carlo simulation (500 scenarios) ---
+    const projections = runMonteCarloSimulation(
       profile,
       model,
       macro,
@@ -454,6 +467,10 @@ export async function POST(request: NextRequest) {
         date: p.date,
         withPurchase: p.withPurchase,
         withoutPurchase: p.withoutPurchase,
+        withPurchaseP10: p.withPurchaseP10,
+        withPurchaseP90: p.withPurchaseP90,
+        withoutPurchaseP10: p.withoutPurchaseP10,
+        withoutPurchaseP90: p.withoutPurchaseP90,
       })),
       canAfford,
       riskLevel,
