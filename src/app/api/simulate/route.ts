@@ -26,10 +26,14 @@ interface PersonalFinanceModel {
   topExpenseCategories: { category: string; amount: number }[];
 }
 
-interface ProjectionMonth {
+interface MonteCarloProjection {
   date: string;
   withPurchase: number;
   withoutPurchase: number;
+  withPurchaseP10: number;
+  withPurchaseP90: number;
+  withoutPurchaseP10: number;
+  withoutPurchaseP90: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,7 +43,7 @@ interface ProjectionMonth {
 const CURRENCY_TO_COUNTRY: Record<string, string> = {
   ZAR: "ZA",
   USD: "US",
-  EUR: "DE",
+  EUR: "EMU",
   GBP: "GB",
   BRL: "BR",
   INR: "IN",
@@ -52,6 +56,26 @@ const CURRENCY_TO_COUNTRY: Record<string, string> = {
   KRW: "KR",
   SEK: "SE",
   NOK: "NO",
+};
+
+const DEFAULT_COUNTRY = "WLD"; // World average fallback
+
+const CURRENCY_TO_COUNTRY_NAME: Record<string, string> = {
+  ZAR: "South Africa",
+  USD: "United States",
+  EUR: "Eurozone",
+  GBP: "United Kingdom",
+  BRL: "Brazil",
+  INR: "India",
+  JPY: "Japan",
+  AUD: "Australia",
+  CAD: "Canada",
+  MXN: "Mexico",
+  CHF: "Switzerland",
+  CNY: "China",
+  KRW: "South Korea",
+  SEK: "Sweden",
+  NOK: "Norway",
 };
 
 async function fetchWorldBankIndicator(
@@ -95,7 +119,7 @@ async function fetchExchangeRate(currency: string): Promise<number | null> {
 }
 
 async function fetchMacroIndicators(currency: string): Promise<MacroIndicators> {
-  const countryCode = CURRENCY_TO_COUNTRY[currency] ?? "US";
+  const countryCode = CURRENCY_TO_COUNTRY[currency] ?? DEFAULT_COUNTRY;
 
   const results = await Promise.allSettled([
     fetchWorldBankIndicator(countryCode, "FP.CPI.TOTL.ZG", 5.0),
@@ -181,17 +205,24 @@ function computePersonalFinanceModel(
 }
 
 // ---------------------------------------------------------------------------
-// Layer 3: Projection Engine (deterministic math)
+// Layer 3: Monte Carlo Projection Engine (500 simulations)
 // ---------------------------------------------------------------------------
 
-function computeProjections(
+function boxMullerRandom(): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+function runMonteCarloSimulation(
   profile: UserProfile,
   model: PersonalFinanceModel,
   macro: MacroIndicators,
-  purchaseAmount: number
-): ProjectionMonth[] {
+  purchaseAmount: number,
+  projectionMonths: number = 6,
+  numSimulations: number = 500
+): MonteCarloProjection[] {
   const now = new Date();
-  const projections: ProjectionMonth[] = [];
 
   // Monthly inflation factor from annual rate
   const monthlyInflation =
@@ -202,25 +233,59 @@ function computeProjections(
   if (macro.gdpGrowth < 0) incomeMultiplier *= 0.95;
   if (macro.unemploymentRate > 10) incomeMultiplier *= 0.97;
 
-  let balanceWithout = profile.currentBalance;
-  let balanceWith = profile.currentBalance - purchaseAmount;
+  // Run N simulations, store final balances per month
+  const withoutResults: number[][] = Array.from(
+    { length: projectionMonths },
+    () => []
+  );
+  const withResults: number[][] = Array.from(
+    { length: projectionMonths },
+    () => []
+  );
 
-  for (let i = 1; i <= 6; i++) {
-    const future = new Date(now.getFullYear(), now.getMonth() + i, 1);
+  for (let sim = 0; sim < numSimulations; sim++) {
+    let balanceWithout = profile.currentBalance;
+    let balanceWith = profile.currentBalance - purchaseAmount;
+
+    for (let m = 0; m < projectionMonths; m++) {
+      // Sample expenses from normal distribution using Box-Muller
+      const z = boxMullerRandom();
+      const inflatedExpenses =
+        model.avgMonthlyExpenses * Math.pow(1 + monthlyInflation, m + 1);
+      const sampledExpenses = Math.max(0, inflatedExpenses + z * model.expenseStdDev);
+
+      const adjustedIncome = model.avgMonthlyIncome * incomeMultiplier;
+
+      balanceWithout += adjustedIncome - sampledExpenses;
+      balanceWith += adjustedIncome - sampledExpenses;
+
+      withoutResults[m].push(balanceWithout);
+      withResults[m].push(balanceWith);
+    }
+  }
+
+  // Compute percentiles at each month
+  const projections: MonteCarloProjection[] = [];
+
+  for (let m = 0; m < projectionMonths; m++) {
+    const future = new Date(now.getFullYear(), now.getMonth() + m + 1, 1);
     const dateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}`;
 
-    // Expenses grow with compounding inflation each month
-    const adjustedExpenses =
-      model.avgMonthlyExpenses * Math.pow(1 + monthlyInflation, i);
-    const adjustedIncome = model.avgMonthlyIncome * incomeMultiplier;
+    const wpSorted = withResults[m].slice().sort((a, b) => a - b);
+    const wopSorted = withoutResults[m].slice().sort((a, b) => a - b);
 
-    balanceWithout = balanceWithout + adjustedIncome - adjustedExpenses;
-    balanceWith = balanceWith + adjustedIncome - adjustedExpenses;
+    const p10 = Math.floor(numSimulations * 0.1);
+    const p50 = Math.floor(numSimulations * 0.5);
+    const p90 = Math.floor(numSimulations * 0.9);
 
     projections.push({
       date: dateStr,
-      withPurchase: Math.round(balanceWith),
-      withoutPurchase: Math.round(balanceWithout),
+      withPurchase: Math.round(wpSorted[p50]),
+      withoutPurchase: Math.round(wopSorted[p50]),
+      withPurchaseP10: Math.round(wpSorted[p10]),
+      withPurchaseP90: Math.round(wpSorted[p90]),
+      withoutPurchaseP10: Math.round(wopSorted[p10]),
+      withoutPurchaseP90: Math.round(wopSorted[p90]),
     });
   }
 
@@ -275,7 +340,7 @@ PERSONAL FINANCE (from transaction history, ${model.monthsOfData} months of data
 - Expense volatility (std dev): ${model.expenseStdDev} ${profile.currency}
 - Top spending: ${model.topExpenseCategories.map((c) => `${c.category}: ${c.amount}/mo`).join(", ")}
 
-MACROECONOMIC INDICATORS (${macro.dataSource} data for ${CURRENCY_TO_COUNTRY[profile.currency] ?? "US"}):
+MACROECONOMIC INDICATORS (${macro.dataSource} data for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "World average"}):
 - Inflation: ${macro.inflationRate.toFixed(1)}% annually
 - GDP growth: ${macro.gdpGrowth.toFixed(1)}%
 - Unemployment: ${macro.unemploymentRate.toFixed(1)}%
@@ -289,6 +354,7 @@ ${projections.map((p) => `  ${p.date}: without = ${p.withoutPurchase}, with = ${
 
 NARRATIVE GUIDELINES:
 - Write 2-3 paragraphs, conversational but data-driven
+- Macroeconomic data is sourced for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "the global economy"} based on the user's ${profile.currency} currency — mention this naturally (e.g., "With ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "global"} inflation running at X%...")
 - Reference specific numbers: balance, cash flow, inflation rate, projected minimums
 - Explain WHY the risk level is what it is (e.g., "Your cushion drops to X, which is less than one month of expenses")
 - Weave in macro context naturally: "With inflation at X%, your monthly expenses are projected to rise from Y to Z over 6 months"

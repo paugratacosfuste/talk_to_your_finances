@@ -140,7 +140,7 @@ export default function SimulatorView() {
             <div className="bg-gradient-to-r from-blue-600 to-indigo-500 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Analysis</h3>
               <span className="text-xs bg-white/20 text-white px-2.5 py-1 rounded-full">
-                Data-powered simulation
+                Country-specific CPI data
               </span>
             </div>
             <div className="px-6 py-5 space-y-4">
@@ -158,7 +158,7 @@ export default function SimulatorView() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">6-Month Projection</h3>
                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                  Inflation-adjusted
+                  CPI-adjusted projections
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">
