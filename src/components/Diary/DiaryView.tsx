@@ -103,8 +103,8 @@ export default function DiaryView() {
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Your Money&apos;s Diary</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-2xl font-bold text-content-primary">Your Money&apos;s Diary</h2>
+        <p className="mt-1 text-sm text-content-tertiary">
           A first-person narrative from your money&apos;s perspective — what it felt, where it went, and what it wishes you&apos;d done differently.
         </p>
       </div>
@@ -113,7 +113,7 @@ export default function DiaryView() {
         <button
           onClick={() => setMonth(shiftMonth(month, -1))}
           disabled={!canGoPrev || loading}
-          className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-[var(--border)] text-content-secondary hover:bg-surface-tertiary/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous month"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -127,13 +127,13 @@ export default function DiaryView() {
           min={DATA_START}
           max={DATA_END}
           onChange={(e) => setMonth(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+          className="px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-content-primary bg-[var(--bg-secondary-solid)] focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
         />
 
         <button
           onClick={() => setMonth(shiftMonth(month, 1))}
           disabled={!canGoNext || loading}
-          className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-[var(--border)] text-content-secondary hover:bg-surface-tertiary/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           aria-label="Next month"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -144,7 +144,7 @@ export default function DiaryView() {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="px-5 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? "Writing..." : result ? "Regenerate" : "Generate Diary"}
         </button>
@@ -152,10 +152,12 @@ export default function DiaryView() {
 
       {/* Empty state */}
       {!loading && !result && !error && (
-        <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 px-6 py-12 text-center">
-          <p className="text-4xl mb-3" aria-hidden="true">&#x1F4D6;</p>
-          <p className="text-gray-600 font-medium">What story does your money have to tell?</p>
-          <p className="text-sm text-gray-400 mt-1">
+        <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-accent-muted px-6 py-12 text-center">
+          <div className="flex justify-center mb-3" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+          </div>
+          <p className="text-content-secondary font-medium">What story does your money have to tell?</p>
+          <p className="text-sm text-content-tertiary mt-1">
             Pick a month (Jan–Apr 2020) and hit &ldquo;Generate Diary&rdquo; to read a narrative written from your money&apos;s point of view.
           </p>
         </div>
@@ -163,13 +165,13 @@ export default function DiaryView() {
 
       {/* Loading state */}
       {loading && (
-        <div className="rounded-2xl border border-amber-100 bg-amber-50 px-6 py-8 text-center space-y-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-accent-muted px-6 py-8 text-center space-y-4">
           <div className="flex justify-center gap-1">
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
-          <p className="text-sm text-amber-700 font-medium italic transition-opacity duration-300">
+          <p className="text-sm text-accent font-medium italic transition-opacity duration-300">
             {loadingMsg}
           </p>
         </div>
@@ -177,11 +179,11 @@ export default function DiaryView() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="rounded-lg border border-[var(--border)] bg-accent-muted px-4 py-3">
+          <p className="text-sm text-[var(--expense)]">{error}</p>
           <button
             onClick={handleGenerate}
-            className="mt-2 text-sm font-medium text-red-600 hover:text-red-800 underline"
+            className="mt-2 text-sm font-medium text-[var(--expense)] hover:text-[var(--expense)] underline"
           >
             Try again
           </button>
@@ -201,13 +203,13 @@ export default function DiaryView() {
 
       {/* Transaction list with anomaly badges */}
       {anomalies.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-white shadow-lg overflow-hidden">
-          <div className="px-6 py-3 bg-amber-50 border-b border-amber-100">
-            <h4 className="text-sm font-semibold text-amber-800">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary-solid)] shadow-[var(--card-shadow)] overflow-hidden">
+          <div className="px-6 py-3 bg-accent-muted border-b border-[var(--border)]">
+            <h4 className="text-sm font-semibold text-accent">
               Unusual Transactions ({anomalies.length})
             </h4>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-[var(--border)]">
             {anomalies.map((t) => {
               const score = anomalyScores[t.id];
               return (
@@ -215,7 +217,7 @@ export default function DiaryView() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-2.5 h-2.5 rounded-full bg-amber-400 cursor-pointer flex-shrink-0"
+                        className="w-2.5 h-2.5 rounded-full bg-accent cursor-pointer flex-shrink-0"
                         title="Anomaly detected"
                         onClick={() =>
                           setExpandedAnomaly(
@@ -223,17 +225,17 @@ export default function DiaryView() {
                           )
                         }
                       />
-                      <span className="text-sm text-gray-700">
+                      <span className="text-sm text-content-primary">
                         {t.description}
                       </span>
-                      <span className="text-xs text-gray-400">{t.date}</span>
+                      <span className="text-xs text-content-tertiary">{t.date}</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-content-primary">
                       {formatCurrency(t.amount, DEFAULT_CURRENCY)}
                     </span>
                   </div>
                   {expandedAnomaly === t.id && score?.reason && (
-                    <p className="mt-1.5 ml-4.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                    <p className="mt-1.5 ml-4.5 text-xs text-accent bg-accent-muted rounded px-2 py-1">
                       {score.reason}
                     </p>
                   )}
@@ -245,19 +247,19 @@ export default function DiaryView() {
       )}
 
       {/* Trends heatmap - collapsible */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary-solid)] shadow-[var(--card-shadow)] overflow-hidden">
         <button
           onClick={() => setTrendsOpen(!trendsOpen)}
-          className="w-full px-6 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full px-6 py-4 flex items-center justify-between bg-[var(--bg-tertiary)] hover:bg-surface-tertiary/50 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-gray-900">Spending Trends</h3>
-            <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded">
+            <h3 className="text-lg font-semibold text-content-primary">Spending Trends</h3>
+            <span className="text-xs text-content-tertiary bg-[var(--bg-tertiary)] px-2 py-0.5 rounded">
               Month x Category Heatmap
             </span>
           </div>
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+            className={`w-5 h-5 text-content-tertiary transition-transform duration-200 ${
               trendsOpen ? "rotate-180" : ""
             }`}
             fill="none"
@@ -269,7 +271,7 @@ export default function DiaryView() {
           </svg>
         </button>
         {trendsOpen && (
-          <div className="px-4 py-4 border-t border-gray-100">
+          <div className="px-4 py-4 border-t border-[var(--border)]">
             <SpendHeatmap />
           </div>
         )}

@@ -151,20 +151,20 @@ export default function RoastView() {
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Roast My Spending</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-2xl font-bold text-content-primary">Roast My Spending</h2>
+        <p className="mt-1 text-sm text-content-tertiary">
           Get a brutally honest, AI-powered take on your spending habits.
         </p>
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex rounded-lg overflow-hidden border border-gray-300">
+        <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
           <button
             onClick={() => setPeriod("week")}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               period === "week"
-                ? "bg-red-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
+                ? "bg-accent text-white"
+                : "bg-[var(--bg-secondary-solid)] text-content-primary hover:bg-surface-tertiary/50"
             }`}
           >
             Past Week
@@ -173,8 +173,8 @@ export default function RoastView() {
             onClick={() => setPeriod("month")}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               period === "month"
-                ? "bg-red-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
+                ? "bg-accent text-white"
+                : "bg-[var(--bg-secondary-solid)] text-content-primary hover:bg-surface-tertiary/50"
             }`}
           >
             Past Month
@@ -184,7 +184,7 @@ export default function RoastView() {
         <button
           onClick={handleRoast}
           disabled={loading}
-          className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? "Roasting..." : result ? "Roast Again" : "Roast Me"}
         </button>
@@ -192,14 +192,14 @@ export default function RoastView() {
 
       {/* Persona card */}
       {persona && (
-        <div className="rounded-2xl border border-purple-200 bg-purple-50 px-6 py-4">
-          <h4 className="text-sm font-bold text-purple-800">{persona.label}</h4>
-          <p className="text-sm text-purple-700 mt-1">{persona.description}</p>
+        <div className="rounded-2xl border border-[var(--border)] bg-accent-muted px-6 py-4">
+          <h4 className="text-sm font-bold text-accent">{persona.label}</h4>
+          <p className="text-sm text-accent mt-1">{persona.description}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {persona.top_features.map((feat, i) => (
               <span
                 key={i}
-                className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full"
+                className="text-xs bg-accent-muted text-accent px-2 py-0.5 rounded-full"
               >
                 {feat}
               </span>
@@ -210,10 +210,12 @@ export default function RoastView() {
 
       {/* Empty state - before any interaction */}
       {!loading && !result && !error && (
-        <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-12 text-center">
-          <p className="text-4xl mb-3" aria-hidden="true">&#x1F525;</p>
-          <p className="text-gray-600 font-medium">Ready to face the truth?</p>
-          <p className="text-sm text-gray-400 mt-1">
+        <div className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--bg-tertiary)] px-6 py-12 text-center">
+          <div className="flex justify-center mb-3" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><path d="M12 2c.5 3-1.5 5-3 7 1.5 0 3 .5 3 3 0-2.5 1.5-3 3-3-1.5-2-3.5-4-3-7z" /><path d="M8 22h8" /><path d="M12 17v5" /></svg>
+          </div>
+          <p className="text-content-secondary font-medium">Ready to face the truth?</p>
+          <p className="text-sm text-content-tertiary mt-1">
             Select a time period and hit &ldquo;Roast Me&rdquo; to get a brutally honest review of your spending.
           </p>
         </div>
@@ -221,13 +223,13 @@ export default function RoastView() {
 
       {/* Loading state with rotating messages */}
       {loading && (
-        <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-8 text-center space-y-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-accent-muted px-6 py-8 text-center space-y-4">
           <div className="flex justify-center gap-1">
-            <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
-          <p className="text-sm text-red-700 font-medium transition-opacity duration-300">
+          <p className="text-sm text-accent font-medium transition-opacity duration-300">
             {loadingMsg}
           </p>
         </div>
@@ -235,11 +237,11 @@ export default function RoastView() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="rounded-lg border border-[var(--border)] bg-accent-muted px-4 py-3">
+          <p className="text-sm text-[var(--expense)]">{error}</p>
           <button
             onClick={handleRoast}
-            className="mt-2 text-sm font-medium text-red-600 hover:text-red-800 underline"
+            className="mt-2 text-sm font-medium text-[var(--expense)] hover:text-[var(--expense)] underline"
           >
             Try again
           </button>
@@ -257,21 +259,21 @@ export default function RoastView() {
 
           {/* Grounding Sources - collapsible */}
           {groundingSources.length > 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary-solid)] shadow-sm overflow-hidden">
               <button
                 onClick={() => setGroundingOpen(!groundingOpen)}
-                className="w-full px-5 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                className="w-full px-5 py-3 flex items-center justify-between bg-[var(--bg-tertiary)] hover:bg-surface-tertiary/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-content-primary">
                     Grounding Sources
                   </span>
-                  <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded">
+                  <span className="text-xs text-content-tertiary bg-[var(--bg-tertiary)] px-2 py-0.5 rounded">
                     {groundingSources.length} references
                   </span>
                 </div>
                 <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                  className={`w-4 h-4 text-content-tertiary transition-transform duration-200 ${
                     groundingOpen ? "rotate-180" : ""
                   }`}
                   fill="none"
@@ -283,13 +285,13 @@ export default function RoastView() {
                 </svg>
               </button>
               {groundingOpen && (
-                <div className="px-5 py-3 border-t border-gray-100 space-y-2">
+                <div className="px-5 py-3 border-t border-[var(--border)] space-y-2">
                   {groundingSources.map((chunk) => (
                     <div key={chunk.id} className="text-xs">
-                      <span className="inline-block bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium mr-2">
+                      <span className="inline-block bg-accent-muted text-accent px-2 py-0.5 rounded-full font-medium mr-2">
                         {chunk.topic.replace(/_/g, " ")}
                       </span>
-                      <span className="text-gray-500">{chunk.text}</span>
+                      <span className="text-content-tertiary">{chunk.text}</span>
                     </div>
                   ))}
                 </div>

@@ -59,14 +59,14 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
     <div className="w-full h-72">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 12, fill: "#6b7280" }}
+            tick={{ fontSize: 12, fill: "var(--text-tertiary)" }}
           />
           <YAxis
             tickFormatter={formatYAxis}
-            tick={{ fontSize: 12, fill: "#6b7280" }}
+            tick={{ fontSize: 12, fill: "var(--text-tertiary)" }}
           />
           <Tooltip
             formatter={(value, name) => {
@@ -77,8 +77,10 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
             }}
             contentStyle={{
               borderRadius: "8px",
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--border)",
               fontSize: "13px",
+              backgroundColor: "var(--bg-secondary-solid)",
+              color: "var(--text-primary)",
             }}
           />
           <Legend wrapperStyle={{ fontSize: "13px" }} />
@@ -88,7 +90,7 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
             <Area
               type="monotone"
               dataKey="withoutRange"
-              fill="#22c55e"
+              fill="#6BCB77"
               fillOpacity={0.1}
               stroke="none"
               name="Without Purchase (P10–P90)"
@@ -99,7 +101,7 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
             <Area
               type="monotone"
               dataKey="withRange"
-              fill="#ef4444"
+              fill="#D4A0CC"
               fillOpacity={0.1}
               stroke="none"
               name="With Purchase (P10–P90)"
@@ -111,7 +113,7 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
           <Line
             type="monotone"
             dataKey="Without Purchase"
-            stroke="#22c55e"
+            stroke="#6BCB77"
             strokeWidth={2}
             dot={{ r: 4 }}
             activeDot={{ r: 6 }}
@@ -119,7 +121,7 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
           <Line
             type="monotone"
             dataKey="With Purchase"
-            stroke="#ef4444"
+            stroke="#D4A0CC"
             strokeWidth={2}
             dot={{ r: 4 }}
             activeDot={{ r: 6 }}

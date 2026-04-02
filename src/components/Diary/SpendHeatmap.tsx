@@ -86,12 +86,13 @@ export default function SpendHeatmap() {
   };
 
   const getColor = (intensity: number) => {
-    if (intensity === 0) return "rgb(239, 246, 255)";
+    if (intensity === 0) return "rgb(245, 235, 243)";
     const min = 0.15;
     const scaled = min + intensity * (1 - min);
-    const r = Math.round(239 - scaled * (239 - 37));
-    const g = Math.round(246 - scaled * (246 - 99));
-    const b = Math.round(255 - scaled * (255 - 235));
+    // Pink/purple tones based on #D4A0CC
+    const r = Math.round(245 - scaled * (245 - 160));
+    const g = Math.round(235 - scaled * (235 - 100));
+    const b = Math.round(243 - scaled * (243 - 180));
     return `rgb(${r}, ${g}, ${b})`;
   };
 
@@ -101,13 +102,13 @@ export default function SpendHeatmap() {
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-white z-10 px-2 py-2 text-left text-gray-400 font-normal uppercase tracking-wide">
+              <th className="sticky left-0 bg-[var(--bg-secondary-solid)] z-10 px-2 py-2 text-left text-content-tertiary font-normal uppercase tracking-wide">
                 Month
               </th>
               {categories.map((cat) => (
                 <th
                   key={cat}
-                  className="px-1.5 py-2 text-center text-gray-400 font-normal uppercase tracking-wide whitespace-nowrap"
+                  className="px-1.5 py-2 text-center text-content-tertiary font-normal uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 60 }}
                 >
                   {cat}
@@ -118,7 +119,7 @@ export default function SpendHeatmap() {
           <tbody>
             {grid.map((row, ri) => (
               <tr key={months[ri]}>
-                <td className="sticky left-0 bg-white z-10 px-2 py-1.5 text-gray-600 font-medium whitespace-nowrap">
+                <td className="sticky left-0 bg-[var(--bg-secondary-solid)] z-10 px-2 py-1.5 text-content-secondary font-medium whitespace-nowrap">
                   {formatMonth(months[ri])}
                 </td>
                 {row.map((cell, ci) => (

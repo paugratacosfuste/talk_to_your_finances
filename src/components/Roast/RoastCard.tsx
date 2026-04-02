@@ -23,8 +23,8 @@ export default function RoastCard({ result, currency }: RoastCardProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-red-200 bg-white shadow-lg overflow-hidden">
-      <div className="bg-gradient-to-r from-red-600 to-orange-500 px-6 py-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary-solid)] shadow-[var(--card-shadow)] overflow-hidden">
+      <div className="bg-gradient-to-r from-[#D4A0CC] to-[#A78BFA] px-6 py-4 flex items-center justify-between">
         <h3 className="text-lg font-bold text-white">Your Roast is Served</h3>
         <button
           onClick={handleCopy}
@@ -50,24 +50,24 @@ export default function RoastCard({ result, currency }: RoastCardProps) {
 
       <div className="px-6 py-6 space-y-4">
         {paragraphs.map((paragraph, index) => (
-          <p key={index} className="text-gray-700 leading-relaxed text-[15px]">
+          <p key={index} className="text-content-primary leading-relaxed text-[15px]">
             {paragraph}
           </p>
         ))}
       </div>
 
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+      <div className="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border)]">
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Biggest Offender</p>
-            <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700 capitalize">
+            <p className="text-xs text-content-tertiary uppercase tracking-wide mb-1">Biggest Offender</p>
+            <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-accent-muted text-[var(--expense)] capitalize">
               {result.weekSummary.topCategory}
             </span>
           </div>
 
           <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Potential Savings</p>
-            <span className="text-xl font-bold text-green-600">
+            <p className="text-xs text-content-tertiary uppercase tracking-wide mb-1">Potential Savings</p>
+            <span className="text-xl font-bold text-[var(--income)]">
               {formatCurrency(result.savingsPotential, currency)}
             </span>
           </div>

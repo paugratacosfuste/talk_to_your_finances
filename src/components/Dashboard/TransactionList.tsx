@@ -45,10 +45,6 @@ export default function TransactionList({ transactions, currency, title = 'Recen
             <div
               key={txn.id}
               className="transaction-row flex items-center gap-3 px-5 py-3.5 hover:bg-surface-tertiary/50"
-              style={{
-                opacity: 0,
-                animation: `fadeUp 0.35s ease-out ${idx * 40}ms forwards`,
-              }}
             >
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"

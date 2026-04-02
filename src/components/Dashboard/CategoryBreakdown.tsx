@@ -202,7 +202,6 @@ export default function CategoryBreakdown({ categoryTotals, currency }: Category
               <div key={category}>
                 <div
                   className="flex items-center gap-3 cursor-pointer rounded-xl transition-all duration-200 hover:bg-surface-tertiary/50 p-1 -m-1"
-                  style={{ opacity: 0, animation: `fadeUp 0.35s ease-out ${i * 50 + 400}ms forwards` }}
                   onClick={() => {
                     const segIdx = segments.findIndex(s => s.category === category);
                     if (segIdx >= 0) handleSegmentClick(segIdx);

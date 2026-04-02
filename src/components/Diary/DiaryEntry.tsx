@@ -21,38 +21,38 @@ export default function DiaryEntry({ result, currency }: DiaryEntryProps) {
   const net = result.totalIncome - result.totalSpent;
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-white shadow-lg overflow-hidden">
-      <div className="bg-gradient-to-r from-amber-600 to-yellow-500 px-6 py-4">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary-solid)] shadow-[var(--card-shadow)] overflow-hidden">
+      <div className="bg-gradient-to-r from-[#D4A0CC] to-[#A78BFA] px-6 py-4">
         <h3 className="text-lg font-bold text-white font-serif">
           Dear Diary — {monthName}
         </h3>
       </div>
 
-      <div className="px-6 py-6 space-y-4 bg-amber-50/30">
+      <div className="px-6 py-6 space-y-4 bg-accent-muted/30">
         {paragraphs.map((paragraph, index) => (
-          <p key={index} className="text-gray-800 leading-relaxed font-serif text-[15px]">
+          <p key={index} className="text-content-primary leading-relaxed font-serif text-[15px]">
             {paragraph}
           </p>
         ))}
       </div>
 
-      <div className="px-6 py-4 bg-white border-t border-amber-100">
+      <div className="px-6 py-4 bg-[var(--bg-secondary-solid)] border-t border-[var(--border)]">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Spent</p>
-            <p className="text-lg font-bold text-red-600">
+            <p className="text-xs text-content-tertiary uppercase tracking-wide mb-1">Spent</p>
+            <p className="text-lg font-bold text-[var(--expense)]">
               {formatCurrency(result.totalSpent, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Earned</p>
-            <p className="text-lg font-bold text-green-600">
+            <p className="text-xs text-content-tertiary uppercase tracking-wide mb-1">Earned</p>
+            <p className="text-lg font-bold text-[var(--income)]">
               {formatCurrency(result.totalIncome, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Net</p>
-            <p className={`text-lg font-bold ${net >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <p className="text-xs text-content-tertiary uppercase tracking-wide mb-1">Net</p>
+            <p className={`text-lg font-bold ${net >= 0 ? "text-[var(--income)]" : "text-[var(--expense)]"}`}>
               {net >= 0 ? "+" : ""}{formatCurrency(net, currency)}
             </p>
           </div>
