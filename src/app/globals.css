@@ -1,3 +1,274 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ========== Theme Variables ========== */
+:root {
+  --bg-primary: #F5F2F8;
+  --bg-secondary: rgba(255, 255, 255, 0.82);
+  --bg-secondary-solid: #FFFFFF;
+  --bg-tertiary: #EDE8F2;
+  --text-primary: #1A1525;
+  --text-secondary: #605570;
+  --text-tertiary: #908598;
+  --accent: #B888B0;
+  --accent-light: #C8A0C0;
+  --accent-muted: rgba(184, 136, 176, 0.12);
+  --border: rgba(180, 160, 195, 0.25);
+  --income: #5AB868;
+  --expense: #E06060;
+  --card-shadow: 0 4px 20px rgba(80, 50, 100, 0.06);
+  --card-shadow-hover: 0 8px 30px rgba(80, 50, 100, 0.1);
+  --chart-gradient-start: rgba(184, 136, 176, 0.25);
+  --chart-gradient-end: rgba(184, 136, 176, 0.02);
+  --card-gradient: linear-gradient(135deg, rgba(255,255,255,0.88), rgba(248,242,252,0.5));
+  --glow-primary: rgba(184, 136, 176, 0.12);
+  --glow-secondary: rgba(150, 130, 190, 0.1);
+}
+
+.dark {
+  --bg-primary: #000000;
+  --bg-secondary: rgba(22, 20, 28, 0.65);
+  --bg-secondary-solid: #0E0C14;
+  --bg-tertiary: #18161F;
+  --text-primary: #F0ECF4;
+  --text-secondary: #8A8095;
+  --text-tertiary: #4A4455;
+  --accent: #D4A0CC;
+  --accent-light: #E0B8D8;
+  --accent-muted: rgba(212, 160, 204, 0.12);
+  --border: rgba(60, 50, 75, 0.4);
+  --income: #6BCB77;
+  --expense: #FF6B6B;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --chart-gradient-start: rgba(212, 160, 204, 0.25);
+  --chart-gradient-end: rgba(212, 160, 204, 0.02);
+  --card-gradient: linear-gradient(135deg, rgba(28, 24, 35, 0.7), rgba(18, 15, 24, 0.5));
+  --glow-primary: rgba(212, 160, 204, 0.1);
+  --glow-secondary: rgba(160, 140, 200, 0.08);
+}
+
+/* ========== Base ========== */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #050308;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+/* ========== iPhone Frame ========== */
+.iphone-frame {
+  position: relative;
+  width: 468px;
+  height: 1013px;
+  border-radius: 62px;
+  background: var(--bg-primary);
+  box-shadow:
+    0 0 0 3px #1a181e,
+    0 0 0 5px #0a090c,
+    0 0 0 7px #2a272e,
+    0 30px 80px rgba(0,0,0,0.7),
+    inset 0 0 2px rgba(255,255,255,0.02);
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.iphone-notch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 34px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 100;
+}
+
+.iphone-notch::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  top: 10px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #15121a, #050408);
+  box-shadow: inset 0 0 3px rgba(50,40,65,0.5);
+}
+
+.iphone-status-bar {
+  height: 54px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 28px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 90;
+  position: relative;
+  background: transparent;
+}
+
+.iphone-home-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-tertiary);
+  opacity: 0.3;
+  z-index: 100;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ========== Glass & Cards ========== */
+.glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.glass-card {
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  background: var(--card-gradient);
+}
+
+.warm-card {
+  position: relative;
+  border-radius: 20px;
+  background: var(--card-gradient);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  overflow: hidden;
+}
+
+.warm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(212,160,204,0.2), rgba(120,100,150,0.1), rgba(50,40,60,0.05));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========== Ambient Background Waves ========== */
+.ambient-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ambient-wave {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0;
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+@keyframes ambientPulse {
+  0%, 100% { opacity: 0.15; transform: scale(1) translate(0, 0); }
+  33% { opacity: 0.3; transform: scale(1.2) translate(10px, -10px); }
+  66% { opacity: 0.2; transform: scale(0.9) translate(-10px, 10px); }
+}
+
+/* ========== Animations ========== */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeUp 0.5s ease-out forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 480ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
+
+.tab-content-enter {
+  animation: fadeIn 0.25s ease-out;
+}
+
+.donut-segment {
+  transition: stroke-dashoffset 0.8s ease-out;
+}
+
+.chart-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 1.5s ease-out forwards;
+}
+
+.chart-area {
+  opacity: 0;
+  animation: fadeIn 1s ease-out 0.8s forwards;
+}
+
+.transaction-row {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.transaction-row:active {
+  transform: scale(0.98);
+}
+
+.category-bubble {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+}
+.category-bubble:active {
+  transform: scale(0.92);
+}
+
+.quick-action-btn {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.quick-action-btn:active {
+  transform: scale(0.9);
+}
+
+/* ========== Bank Card ========== */
+.bank-card-container {
+  perspective: 1000px;
+}
+.bank-card {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+.bank-card:hover {
+  transform: rotateY(-5deg) rotateX(3deg) scale(1.02);
+}
