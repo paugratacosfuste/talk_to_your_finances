@@ -5,6 +5,9 @@ import { getMockData } from "@/data/mockData";
 import { filterByDate } from "@/utils/dataUtils";
 import type { DiaryResult, APIResponse } from "@/types";
 
+// Extends Sean's DiaryResult with spending totals displayed in DiaryEntry
+type ExtendedDiaryResult = DiaryResult & { totalSpent: number; totalIncome: number };
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -92,15 +95,16 @@ Write ONLY the narrative. No titles, headers, metadata, or sign-offs like "Yours
 
     const claudeResponse = await callClaude(systemPrompt, userMessage);
 
-    const result: DiaryResult = {
+    const result: ExtendedDiaryResult = {
       narrative: claudeResponse.trim(),
       month,
+      highlights: [],
       totalSpent,
       totalIncome,
     };
 
     return NextResponse.json(
-      { success: true, data: result } satisfies APIResponse<DiaryResult>,
+      { success: true, data: result } satisfies APIResponse<ExtendedDiaryResult>,
       { status: 200 }
     );
   } catch (error) {

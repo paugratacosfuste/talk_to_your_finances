@@ -4,17 +4,20 @@ import { useState } from "react";
 import { formatCurrency } from "@/utils/dataUtils";
 import type { RoastResult } from "@/types";
 
+// Extends Sean's RoastResult with the savings estimate produced by the roast API
+type ExtendedRoastResult = RoastResult & { savingsPotential: number };
+
 interface RoastCardProps {
-  result: RoastResult;
+  result: ExtendedRoastResult;
   currency: string;
 }
 
 export default function RoastCard({ result, currency }: RoastCardProps) {
   const [copied, setCopied] = useState(false);
-  const paragraphs = result.roast.split("\n\n").filter(Boolean);
+  const paragraphs = result.roastText.split("\n\n").filter(Boolean);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(result.roast);
+    await navigator.clipboard.writeText(result.roastText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -58,7 +61,7 @@ export default function RoastCard({ result, currency }: RoastCardProps) {
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Biggest Offender</p>
             <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700 capitalize">
-              {result.worstCategory}
+              {result.weekSummary.topCategory}
             </span>
           </div>
 

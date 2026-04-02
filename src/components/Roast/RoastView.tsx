@@ -8,6 +8,9 @@ import { sumByCategory, getTotalSpent, getTotalIncome } from "@/utils/dataUtils"
 import { loadEmbeddings, loadChunks, retrieveRelevantChunks } from "@/utils/ragRetriever";
 import type { RoastResult, APIResponse } from "@/types";
 
+// Extends Sean's RoastResult with the savings estimate produced by the roast API
+type ExtendedRoastResult = RoastResult & { savingsPotential: number };
+
 interface Persona {
   label: string;
   description: string;
@@ -31,7 +34,7 @@ const LOADING_MESSAGES = [
 
 export default function RoastView() {
   const [period, setPeriod] = useState<"week" | "month">("week");
-  const [result, setResult] = useState<RoastResult | null>(null);
+  const [result, setResult] = useState<ExtendedRoastResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
@@ -131,7 +134,7 @@ export default function RoastView() {
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
-      const data: APIResponse<RoastResult> = await response.json();
+      const data: APIResponse<ExtendedRoastResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
         setTimeout(() => setShowResult(true), 50);

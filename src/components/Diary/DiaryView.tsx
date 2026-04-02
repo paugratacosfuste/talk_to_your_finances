@@ -8,6 +8,9 @@ import { getMockData } from "@/data/mockData";
 import { formatCurrency } from "@/utils/dataUtils";
 import type { DiaryResult, APIResponse } from "@/types";
 
+// Extends Sean's DiaryResult with spending totals returned by the diary API
+type ExtendedDiaryResult = DiaryResult & { totalSpent: number; totalIncome: number };
+
 interface AnomalyScore {
   is_anomaly: boolean;
   score: number;
@@ -35,7 +38,7 @@ function shiftMonth(current: string, delta: number): string {
 
 export default function DiaryView() {
   const [month, setMonth] = useState(DATA_END);
-  const [result, setResult] = useState<DiaryResult | null>(null);
+  const [result, setResult] = useState<ExtendedDiaryResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
@@ -83,7 +86,7 @@ export default function DiaryView() {
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
-      const data: APIResponse<DiaryResult> = await response.json();
+      const data: APIResponse<ExtendedDiaryResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
         setTimeout(() => setShowResult(true), 50);

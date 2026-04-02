@@ -3,6 +3,23 @@ import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
 import type { SimulationResult, APIResponse, Transaction, UserProfile } from "@/types";
+
+// Extends Sean's SimulationResult with Monte Carlo confidence bands and risk assessment
+interface ExtendedProjection {
+  date: string;
+  withPurchase: number;
+  withoutPurchase: number;
+  withPurchaseP10: number;
+  withPurchaseP90: number;
+  withoutPurchaseP10: number;
+  withoutPurchaseP90: number;
+}
+
+type ExtendedSimulationResult = Omit<SimulationResult, "projectedBalances"> & {
+  projectedBalances: ExtendedProjection[];
+  canAfford: boolean;
+  riskLevel: string;
+};
 import spendingModel from "../../../../models/spending_model.json";
 
 // ---------------------------------------------------------------------------
@@ -230,7 +247,11 @@ function getMLPrediction(
     return {
       predictedMonthlyExpenses: model.avgMonthlyExpenses,
       predictionSource: "historical-average",
-      modelMetrics: spendingModel.evaluation as MLPrediction["modelMetrics"],
+      modelMetrics: {
+        r2: spendingModel.evaluation.test_r2,
+        mae: spendingModel.evaluation.test_mae,
+        rmse: spendingModel.evaluation.test_rmse,
+      },
       categoryBreakdown: {},
     };
   }
@@ -535,7 +556,7 @@ export async function POST(request: NextRequest) {
     const analysis = await callClaude(systemPrompt, userMessage);
 
     // --- Assemble response ---
-    const result: SimulationResult = {
+    const result: ExtendedSimulationResult = {
       analysis: analysis.trim(),
       projectedBalances: projections.map((p) => ({
         date: p.date,
@@ -546,12 +567,13 @@ export async function POST(request: NextRequest) {
         withoutPurchaseP10: p.withoutPurchaseP10,
         withoutPurchaseP90: p.withoutPurchaseP90,
       })),
+      warnings: [],
       canAfford,
       riskLevel,
     };
 
     return NextResponse.json(
-      { success: true, data: result } satisfies APIResponse<SimulationResult>,
+      { success: true, data: result } satisfies APIResponse<ExtendedSimulationResult>,
       { status: 200 }
     );
   } catch (error) {

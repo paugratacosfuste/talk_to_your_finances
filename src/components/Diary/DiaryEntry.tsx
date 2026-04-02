@@ -1,8 +1,11 @@
 import { formatCurrency } from "@/utils/dataUtils";
 import type { DiaryResult } from "@/types";
 
+// Extends Sean's DiaryResult with spending totals displayed in the footer
+type ExtendedDiaryResult = DiaryResult & { totalSpent: number; totalIncome: number };
+
 interface DiaryEntryProps {
-  result: DiaryResult;
+  result: ExtendedDiaryResult;
   currency: string;
 }
 

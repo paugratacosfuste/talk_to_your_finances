@@ -11,10 +11,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { SimulationResult } from "@/types";
+// Extends Sean's base projection type with Monte Carlo confidence bands
+interface ExtendedProjection {
+  date: string;
+  withPurchase: number;
+  withoutPurchase: number;
+  withPurchaseP10: number;
+  withPurchaseP90: number;
+  withoutPurchaseP10: number;
+  withoutPurchaseP90: number;
+}
 
 interface ImpactTimelineProps {
-  projectedBalances: SimulationResult["projectedBalances"];
+  projectedBalances: ExtendedProjection[];
 }
 
 function formatMonth(dateStr: string): string {
@@ -60,11 +69,11 @@ export default function ImpactTimeline({ projectedBalances }: ImpactTimelineProp
             tick={{ fontSize: 12, fill: "#6b7280" }}
           />
           <Tooltip
-            formatter={(value: number | number[], name: string) => {
+            formatter={(value, name) => {
               if (Array.isArray(value)) {
-                return [`${value[0].toLocaleString()} – ${value[1].toLocaleString()}`, name];
+                return [`${Number(value[0]).toLocaleString()} – ${Number(value[1]).toLocaleString()}`, String(name)];
               }
-              return [value.toLocaleString(), name];
+              return [Number(value).toLocaleString(), String(name)];
             }}
             contentStyle={{
               borderRadius: "8px",
