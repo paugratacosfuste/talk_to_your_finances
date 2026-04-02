@@ -28,12 +28,6 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-try:
-    from xgboost import XGBRegressor
-    HAS_XGBOOST = True
-except ImportError:
-    HAS_XGBOOST = False
-
 warnings.filterwarnings("ignore")
 
 # ── Constants ─────────────────────────────────────────────────────────────────

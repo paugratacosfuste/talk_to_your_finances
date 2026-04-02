@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DiaryEntry from "./DiaryEntry";
 import SpendHeatmap from "./SpendHeatmap";
 import { DEFAULT_CURRENCY, DATE_RANGE } from "@/data/constants";
@@ -48,8 +48,14 @@ export default function DiaryView() {
     fetch("/anomaly_scores.json")
       .then((res) => res.json())
       .then((data) => setAnomalyScores(data))
-      .catch(() => {});
+      .catch((e) => console.warn("Failed to load anomaly scores:", e));
   }, []);
+
+  const anomalies = useMemo(() => {
+    const { transactions } = getMockData();
+    const monthTxns = transactions.filter((t) => t.date.startsWith(month));
+    return monthTxns.filter((t) => anomalyScores[t.id]?.is_anomaly);
+  }, [month, anomalyScores]);
 
   const canGoPrev = month > DATA_START;
   const canGoNext = month < DATA_END;
@@ -74,6 +80,9 @@ export default function DiaryView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month }),
       });
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
       const data: APIResponse<DiaryResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
@@ -188,59 +197,49 @@ export default function DiaryView() {
       )}
 
       {/* Transaction list with anomaly badges */}
-      {(() => {
-        const { transactions } = getMockData();
-        const monthTxns = transactions.filter((t) => t.date.startsWith(month));
-        if (monthTxns.length === 0) return null;
-        const anomalies = monthTxns.filter(
-          (t) => anomalyScores[t.id]?.is_anomaly
-        );
-        if (anomalies.length === 0) return null;
-
-        return (
-          <div className="rounded-2xl border border-amber-200 bg-white shadow-lg overflow-hidden">
-            <div className="px-6 py-3 bg-amber-50 border-b border-amber-100">
-              <h4 className="text-sm font-semibold text-amber-800">
-                Unusual Transactions ({anomalies.length})
-              </h4>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {anomalies.map((t) => {
-                const score = anomalyScores[t.id];
-                return (
-                  <div key={t.id} className="px-6 py-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full bg-amber-400 cursor-pointer flex-shrink-0"
-                          title="Anomaly detected"
-                          onClick={() =>
-                            setExpandedAnomaly(
-                              expandedAnomaly === t.id ? null : t.id
-                            )
-                          }
-                        />
-                        <span className="text-sm text-gray-700">
-                          {t.description}
-                        </span>
-                        <span className="text-xs text-gray-400">{t.date}</span>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatCurrency(t.amount, DEFAULT_CURRENCY)}
-                      </span>
-                    </div>
-                    {expandedAnomaly === t.id && score?.reason && (
-                      <p className="mt-1.5 ml-4.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
-                        {score.reason}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+      {anomalies.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-white shadow-lg overflow-hidden">
+          <div className="px-6 py-3 bg-amber-50 border-b border-amber-100">
+            <h4 className="text-sm font-semibold text-amber-800">
+              Unusual Transactions ({anomalies.length})
+            </h4>
           </div>
-        );
-      })()}
+          <div className="divide-y divide-gray-100">
+            {anomalies.map((t) => {
+              const score = anomalyScores[t.id];
+              return (
+                <div key={t.id} className="px-6 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full bg-amber-400 cursor-pointer flex-shrink-0"
+                        title="Anomaly detected"
+                        onClick={() =>
+                          setExpandedAnomaly(
+                            expandedAnomaly === t.id ? null : t.id
+                          )
+                        }
+                      />
+                      <span className="text-sm text-gray-700">
+                        {t.description}
+                      </span>
+                      <span className="text-xs text-gray-400">{t.date}</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatCurrency(t.amount, DEFAULT_CURRENCY)}
+                    </span>
+                  </div>
+                  {expandedAnomaly === t.id && score?.reason && (
+                    <p className="mt-1.5 ml-4.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                      {score.reason}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Trends heatmap - collapsible */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden">

@@ -103,6 +103,9 @@ export default function SimulatorView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ purchaseDescription, amount }),
       });
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
       const data: APIResponse<SimulationResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);

@@ -17,7 +17,7 @@ export default function SpendHeatmap() {
   const [tooltip, setTooltip] = useState<CellData | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  const { months, categories, grid, maxPerCategory } = useMemo(() => {
+  const { months, categories, grid } = useMemo(() => {
     const { transactions } = getMockData();
 
     const monthCatSpend: Record<string, Record<string, number>> = {};
@@ -74,7 +74,6 @@ export default function SpendHeatmap() {
       months: allMonths,
       categories: allCategories,
       grid: gridData,
-      maxPerCategory: maxPerCat,
     };
   }, []);
 

@@ -30,6 +30,7 @@ PERSONAS = [
             "- typical of social spenders who keep weekday costs controlled but "
             "loosen up on weekends."
         ),
+        "signal_categories": {"Entertainment", "Restaurants"},
     },
     {
         "label": "The Subscription Hoarder",
@@ -38,6 +39,7 @@ PERSONAS = [
             "income - the type who signs up for every service and forgets to "
             "cancel, bleeding money on autopilot."
         ),
+        "signal_categories": {"Subscriptions", "Utilities"},
     },
     {
         "label": "The Grocery Optimizer",
@@ -46,6 +48,7 @@ PERSONAS = [
             "rate - someone who plans meals, clips coupons, and treats the "
             "kitchen as the default option."
         ),
+        "signal_categories": {"Groceries"},
     },
     {
         "label": "The Lifestyle Inflater",
@@ -54,6 +57,7 @@ PERSONAS = [
             "more but always finds ways to spend more too, upgrading habits "
             "instead of building a cushion."
         ),
+        "signal_categories": {"Shopping", "Health", "Transport"},
     },
 ]
 
@@ -97,12 +101,27 @@ def main() -> None:
 
     # Assign most frequent cluster as user persona
     most_common = int(np.bincount(labels).argmax())
-    persona = PERSONAS[most_common % len(PERSONAS)]
 
-    # Compute top features for the assigned cluster
+    # Compute cluster profile vs overall to match persona by feature similarity
     cluster_mask = labels == most_common
     cluster_means = pivot.values[cluster_mask].mean(axis=0)
     overall_means = pivot.values.mean(axis=0)
+
+    # Score each persona by how elevated its signal categories are in this cluster
+    categories = list(pivot.columns)
+    best_score = -1.0
+    best_persona_idx = 0
+    for pi, p in enumerate(PERSONAS):
+        signal_cats = p["signal_categories"]
+        score = 0.0
+        for i, cat in enumerate(categories):
+            if cat in signal_cats and overall_means[i] > 0:
+                score += cluster_means[i] / overall_means[i]
+        if score > best_score:
+            best_score = score
+            best_persona_idx = pi
+
+    persona = PERSONAS[best_persona_idx]
 
     categories = list(pivot.columns)
     feature_tuples: list[tuple[float, str]] = []

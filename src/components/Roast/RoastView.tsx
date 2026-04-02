@@ -48,13 +48,7 @@ export default function RoastView() {
     fetch("/persona.json")
       .then((res) => res.json())
       .then((data) => setPersona(data))
-      .catch(() => {});
-
-    Promise.all([loadEmbeddings(), loadChunks()])
-      .then(([embeddings, chunks]) => {
-        ragDataRef.current = { embeddings, chunks };
-      })
-      .catch(() => {});
+      .catch((e) => console.warn("Failed to load persona data:", e));
   }, []);
 
   useEffect(() => {
@@ -76,6 +70,16 @@ export default function RoastView() {
       const personaContext = persona
         ? `${persona.label}. Key traits: ${persona.top_features.join(", ")}`
         : undefined;
+
+      // Lazy-load RAG embeddings on first roast request
+      if (!ragDataRef.current) {
+        try {
+          const [embeddings, chunks] = await Promise.all([loadEmbeddings(), loadChunks()]);
+          ragDataRef.current = { embeddings, chunks };
+        } catch (e) {
+          console.warn("Failed to load RAG embeddings:", e);
+        }
+      }
 
       // Build user profile for RAG retrieval
       let ragContext: string | undefined;
@@ -124,6 +128,9 @@ export default function RoastView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ period, persona: personaContext, ragContext }),
       });
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
       const data: APIResponse<RoastResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
