@@ -7,6 +7,9 @@ import IPhoneFrame from '@/components/ui/IPhoneFrame';
 import TabNav, { type TabId } from '@/components/ui/TabNav';
 import DashboardView from '@/components/Dashboard/DashboardView';
 import ChatView from '@/components/Chat/ChatView';
+import SimulatorView from '@/components/Simulator/SimulatorView';
+import RoastView from '@/components/Roast/RoastView';
+import DiaryView from '@/components/Diary/DiaryView';
 import LoginPage from '@/components/Login/LoginPage';
 
 /* ─── Placeholder views ─── */
@@ -37,29 +40,11 @@ export default function Home() {
       case 'chat':
         return <ChatView />;
       case 'simulator':
-        return (
-          <PlaceholderView
-            title="Future You Simulator"
-            svgIcon={<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>}
-            description="See how a potential purchase would affect your balance over time."
-          />
-        );
+        return <SimulatorView />;
       case 'roast':
-        return (
-          <PlaceholderView
-            title="Roast My Spending"
-            svgIcon={<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c.5 3-1.5 5-3 7 1.5 0 3 .5 3 3 0-2.5 1.5-3 3-3-1.5-2-3.5-4-3-7z" /><path d="M8 22h8" /><path d="M12 17v5" /></svg>}
-            description="Get a brutally honest (but funny) summary of your spending habits."
-          />
-        );
+        return <RoastView />;
       case 'diary':
-        return (
-          <PlaceholderView
-            title="Your Money's Diary"
-            svgIcon={<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="13" y2="11" /></svg>}
-            description="Your money tells its own story — a monthly narrative of where it went."
-          />
-        );
+        return <DiaryView />;
     }
   };
 
