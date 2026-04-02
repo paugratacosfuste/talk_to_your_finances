@@ -3,7 +3,10 @@ import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
 import { filterByDate, sumByCategory, getTopMerchants, formatCurrency } from "@/utils/dataUtils";
-import type { RoastResult, APIResponse } from "@/types";
+import type { RoastResult, APIResponse, Category } from "@/types";
+
+// Extends Sean's RoastResult with the savings estimate produced by Claude
+type ExtendedRoastResult = RoastResult & { savingsPotential: number };
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,18 +100,29 @@ After your roast, on a new line, output ONLY this XML tag with a realistic savin
     const savingsMatch = claudeResponse.match(/<savings_potential>(\d+)<\/savings_potential>/);
     const savingsPotential = savingsMatch ? parseInt(savingsMatch[1], 10) : Math.round(worstAmount * 0.3);
 
-    const roastText = claudeResponse
+    const roastTextContent = claudeResponse
       .replace(/<savings_potential>\d+<\/savings_potential>/, "")
       .trim();
 
-    const result: RoastResult = {
-      roast: roastText,
-      worstCategory,
+    // Find the wildest (largest single) transaction for weekSummary
+    const wildest = periodTransactions
+      .filter((t) => t.type === "debit")
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
+
+    const result: ExtendedRoastResult = {
+      roastText: roastTextContent,
+      weekSummary: {
+        totalSpent,
+        topCategory: worstCategory as Category,
+        wildestTransaction: wildest
+          ? `${wildest.description} (${formatCurrency(Math.abs(wildest.amount), profile.currency)})`
+          : "N/A",
+      },
       savingsPotential,
     };
 
     return NextResponse.json(
-      { success: true, data: result } satisfies APIResponse<RoastResult>,
+      { success: true, data: result } satisfies APIResponse<ExtendedRoastResult>,
       { status: 200 }
     );
   } catch (error) {

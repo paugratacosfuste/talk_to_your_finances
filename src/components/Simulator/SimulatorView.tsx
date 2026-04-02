@@ -10,6 +10,23 @@ import { formatCurrency } from "@/utils/dataUtils";
 import { DEFAULT_CURRENCY } from "@/data/constants";
 import type { SimulationResult, APIResponse } from "@/types";
 
+// Extends Sean's SimulationResult with Monte Carlo confidence bands and risk assessment
+interface ExtendedProjection {
+  date: string;
+  withPurchase: number;
+  withoutPurchase: number;
+  withPurchaseP10: number;
+  withPurchaseP90: number;
+  withoutPurchaseP10: number;
+  withoutPurchaseP90: number;
+}
+
+type ExtendedSimulationResult = Omit<SimulationResult, "projectedBalances"> & {
+  projectedBalances: ExtendedProjection[];
+  canAfford: boolean;
+  riskLevel: string;
+};
+
 const RISK_STYLES: Record<string, string> = {
   low: "bg-green-100 text-green-800 border-green-200",
   medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -30,7 +47,7 @@ const LOADING_MESSAGES = [
 const RUNWAY_OPTIONS = [3, 6, 12] as const;
 
 export default function SimulatorView() {
-  const [result, setResult] = useState<SimulationResult | null>(null);
+  const [result, setResult] = useState<ExtendedSimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
@@ -106,7 +123,7 @@ export default function SimulatorView() {
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
-      const data: APIResponse<SimulationResult> = await response.json();
+      const data: APIResponse<ExtendedSimulationResult> = await response.json();
       if (data.success && data.data) {
         setResult(data.data);
         setTimeout(() => setShowResult(true), 50);
@@ -266,10 +283,13 @@ export default function SimulatorView() {
                   width={100}
                 />
                 <Tooltip
-                  formatter={(value: number, _name: string, props: { payload: { fullCategory: string; mae: number } }) => [
-                    `${formatCurrency(value, DEFAULT_CURRENCY)} (+/- ${formatCurrency(props.payload.mae, DEFAULT_CURRENCY)})`,
-                    props.payload.fullCategory,
-                  ]}
+                  formatter={(value, _name, props) => {
+                    const payload = props.payload as { fullCategory: string; mae: number };
+                    return [
+                      `${formatCurrency(Number(value), DEFAULT_CURRENCY)} (+/- ${formatCurrency(payload.mae, DEFAULT_CURRENCY)})`,
+                      payload.fullCategory,
+                    ];
+                  }}
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
