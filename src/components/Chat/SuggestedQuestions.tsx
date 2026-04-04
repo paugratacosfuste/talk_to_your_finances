@@ -11,20 +11,24 @@ const DEFAULT_QUESTIONS = [
 interface SuggestedQuestionsProps {
   onSelect: (question: string) => void;
   questions?: string[];
+  compact?: boolean;
 }
 
 export default function SuggestedQuestions({
   onSelect,
   questions = DEFAULT_QUESTIONS,
+  compact = false,
 }: SuggestedQuestionsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={`flex flex-wrap gap-2 ${compact ? 'text-xs' : ''}`}>
       {questions.map((q) => (
         <button
           key={q}
           type="button"
           onClick={() => onSelect(q)}
-          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-blue-400 hover:text-blue-700"
+          className={`rounded-full border border-gray-200 bg-white px-3 py-1.5 text-gray-700 hover:border-blue-400 hover:text-blue-700 ${
+            compact ? 'text-[10px]' : 'text-xs'
+          }`}
         >
           {q}
         </button>
