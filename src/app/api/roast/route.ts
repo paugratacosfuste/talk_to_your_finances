@@ -3,10 +3,21 @@ import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
 import { filterByDate, sumByCategory, getTopMerchants, formatCurrency } from "@/utils/dataUtils";
+import { z } from "zod";
+import { callClaudeWithValidation, buildRetrySuffix } from "@/utils/llmValidation";
 import type { RoastResult, APIResponse, Category } from "@/types";
 
 // Extends Sean's RoastResult with the savings estimate produced by Claude
 type ExtendedRoastResult = RoastResult & { savingsPotential: number };
+
+// ---------------------------------------------------------------------------
+// LLM Output Validation: Schema & Fallback
+// ---------------------------------------------------------------------------
+
+const roastResponseSchema = z.object({
+  roastText: z.string().min(20).max(5000),
+  savingsPotential: z.number().int().nonnegative().max(1_000_000),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,33 +87,57 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `${baseContext}
 ${ragBlock}${personaBlock}
-You are a brutally honest financial roast comedian — think a mix between a disappointed parent looking at a credit card statement and a stand-up comedian who just discovered their audience's bank accounts. Your job: roast the user's spending over the past ${period}.
+You are a brutally honest financial roast comedian  - think a mix between a disappointed parent looking at a credit card statement and a stand-up comedian who just discovered their audience's bank accounts. Your job: roast the user's spending over the past ${period}.
 
 TONE & STYLE RULES:
 - Open with a punchy one-liner that sets the tone (e.g., "I've seen some financial disasters, but yours? This deserves a documentary.")
-- Use specific numbers, category names, and merchant names from the data — generic roasts are lazy
+- Use specific numbers, category names, and merchant names from the data  - generic roasts are lazy
 - Exaggerate for comedic effect but stay grounded in the real data
-- Mix sarcasm with backhanded compliments ("At least you're consistent — consistently broke")
+- Mix sarcasm with backhanded compliments ("At least you're consistent  - consistently broke")
 - End with one genuine, surprisingly helpful piece of advice buried inside the humor
-- Keep it 3-4 tight paragraphs — quality over quantity
-- Never be cruel or personal — roast the SPENDING, not the person
+- Keep it 3-4 tight paragraphs  - quality over quantity
+- Never be cruel or personal  - roast the SPENDING, not the person
 
 EXAMPLE TONE (do NOT copy, just match the energy):
-"Your dining category looks like you've got a personal chef named UberEats. R2,400 in one week? That's not a food budget, that's a restaurant investment portfolio. At this rate, you'll own the place by December — oh wait, no, they'll own YOU."
+"Your dining category looks like you've got a personal chef named UberEats. R2,400 in one week? That's not a food budget, that's a restaurant investment portfolio. At this rate, you'll own the place by December  - oh wait, no, they'll own YOU."
 
-After your roast, on a new line, output ONLY this XML tag with a realistic savings estimate as a plain integer:
-<savings_potential>NUMBER</savings_potential>`;
+Respond with ONLY a JSON object in this exact format, no markdown fences:
+{"roastText": "<your roast here>", "savingsPotential": <integer>}
+- "roastText": 3-4 paragraphs of roast text, separated by \\n\\n
+- "savingsPotential": a realistic integer estimate of how much the user could save by cutting waste in the period
+- Use standard hyphens (-), never em dashes
+- Do not include any text outside the JSON object`;
 
     const userMessage = `Roast my spending for the past ${period}. Total spent: ${formatCurrency(totalSpent, profile.currency)}. Category breakdown: ${JSON.stringify(categoryTotals)}. Worst category: "${worstCategory}" at ${formatCurrency(worstAmount, profile.currency)}. Top merchants: ${JSON.stringify(topMerchants)}. My estimated monthly income is ${formatCurrency(totalIncome, profile.currency)} and my balance is ${formatCurrency(profile.currentBalance, profile.currency)}.`;
 
-    const claudeResponse = await callClaude(systemPrompt, userMessage);
+    const roastFallback = {
+      roastText: `Your spending this ${period} was... something else. We could not generate a full roast right now. Try again in a moment!`,
+      savingsPotential: 0,
+    };
 
-    const savingsMatch = claudeResponse.match(/<savings_potential>(\d+)<\/savings_potential>/);
-    const savingsPotential = savingsMatch ? parseInt(savingsMatch[1], 10) : Math.round(worstAmount * 0.3);
+    const { data: roastData, source: roastSource, attempts } =
+      await callClaudeWithValidation({
+        callFn: () => callClaude(systemPrompt, userMessage),
+        schema: roastResponseSchema,
+        fallback: roastFallback,
+        retryCallFn: (errorDetail) =>
+          callClaude(
+            systemPrompt + buildRetrySuffix(errorDetail),
+            userMessage
+          ),
+      });
 
-    const roastTextContent = claudeResponse
-      .replace(/<savings_potential>\d+<\/savings_potential>/, "")
-      .trim();
+    if (roastSource === "fallback") {
+      console.warn(
+        `[/api/roast] LLM output validation failed after ${attempts} attempts. Using fallback.`
+      );
+    }
+
+    // Business rule: clamp savingsPotential to totalSpent
+    const clampedSavings =
+      roastData.savingsPotential > totalSpent
+        ? Math.round(totalSpent * 0.5)
+        : roastData.savingsPotential;
 
     // Find the wildest (largest single) transaction for weekSummary
     const wildest = periodTransactions
@@ -110,7 +145,7 @@ After your roast, on a new line, output ONLY this XML tag with a realistic savin
       .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
 
     const result: ExtendedRoastResult = {
-      roastText: roastTextContent,
+      roastText: roastData.roastText,
       weekSummary: {
         totalSpent,
         topCategory: worstCategory as Category,
@@ -118,11 +153,15 @@ After your roast, on a new line, output ONLY this XML tag with a realistic savin
           ? `${wildest.description} (${formatCurrency(Math.abs(wildest.amount), profile.currency)})`
           : "N/A",
       },
-      savingsPotential,
+      savingsPotential: clampedSavings,
     };
 
     return NextResponse.json(
-      { success: true, data: result } satisfies APIResponse<ExtendedRoastResult>,
+      {
+        success: true,
+        data: result,
+        validated: roastSource !== "fallback",
+      },
       { status: 200 }
     );
   } catch (error) {

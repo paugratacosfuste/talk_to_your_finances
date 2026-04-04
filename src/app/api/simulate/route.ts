@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { callClaude } from "@/utils/claudeClient";
 import { buildLLMContext } from "@/utils/buildLLMContext";
 import { getMockData } from "@/data/mockData";
+import { z } from "zod";
+import { callClaudeWithValidation, buildRetrySuffix } from "@/utils/llmValidation";
 import type { SimulationResult, APIResponse, Transaction, UserProfile } from "@/types";
 
 // Extends Sean's SimulationResult with Monte Carlo confidence bands and risk assessment
@@ -21,6 +23,19 @@ type ExtendedSimulationResult = Omit<SimulationResult, "projectedBalances"> & {
   riskLevel: string;
 };
 import spendingModel from "../../../../models/spending_model.json";
+
+// ---------------------------------------------------------------------------
+// LLM Output Validation: Schema & Fallback for Claude-generated analysis
+// ---------------------------------------------------------------------------
+
+const simulateAnalysisSchema = z.object({
+  analysis: z.string().min(50).max(5000),
+});
+
+const SIMULATE_ANALYSIS_FALLBACK = {
+  analysis:
+    "We were unable to generate a detailed analysis for this purchase. Based on the simulation data, your balance projections are shown in the chart below. Please review the numbers directly.",
+};
 
 // ---------------------------------------------------------------------------
 // Internal types (not exported, not in src/types/)
@@ -400,7 +415,7 @@ function computeRiskAssessment(
 }
 
 // ---------------------------------------------------------------------------
-// Claude Narrative Prompt (interpretation only — no number generation)
+// Claude Narrative Prompt (interpretation only  - no number generation)
 // ---------------------------------------------------------------------------
 
 function buildNarrativePrompt(
@@ -419,7 +434,7 @@ function buildNarrativePrompt(
 
   const systemPrompt = `${baseContext}
 
-You are a sharp, empathetic financial advisor interpreting a MONTE CARLO financial simulation (500 scenarios). All numbers, projections, and risk scores below were computed by a simulation engine using real financial data, macroeconomic indicators, and expense volatility modeling. Your job is to write a rich narrative that explains the results — do NOT change any numbers or override the risk assessment.
+You are a sharp, empathetic financial advisor interpreting a MONTE CARLO financial simulation (500 scenarios). All numbers, projections, and risk scores below were computed by a simulation engine using real financial data, macroeconomic indicators, and expense volatility modeling. Your job is to write a rich narrative that explains the results  - do NOT change any numbers or override the risk assessment.
 
 PERSONAL FINANCE (from transaction history, ${model.monthsOfData} months of data):
 - Current balance: ${profile.currentBalance} ${profile.currency}
@@ -457,15 +472,19 @@ KEY STATS:
 
 NARRATIVE GUIDELINES:
 - Write 2-3 paragraphs, conversational but data-driven
-- This is a Monte Carlo simulation — reference the range of outcomes naturally: "In the median scenario, your balance will be X. Even in a pessimistic scenario (10th percentile), you'd still have Y."
+- This is a Monte Carlo simulation  - reference the range of outcomes naturally: "In the median scenario, your balance will be X. Even in a pessimistic scenario (10th percentile), you'd still have Y."
 - Mention the confidence band spread to convey uncertainty: "Your balance could range from X to Y depending on spending variability"
-- Macroeconomic data is sourced for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "the global economy"} based on the user's ${profile.currency} currency — mention this naturally
+- Macroeconomic data is sourced for ${CURRENCY_TO_COUNTRY_NAME[profile.currency] ?? "the global economy"} based on the user's ${profile.currency} currency  - mention this naturally
 - Reference specific numbers: balance, cash flow, inflation rate, P10/P50/P90 values
-- Explain WHY the risk level is what it is — note that risk is assessed against the pessimistic scenario
+- Explain WHY the risk level is what it is  - note that risk is assessed against the pessimistic scenario
 - If they can easily afford it, be encouraging. If risky, be direct but constructive
 - End with a concrete, actionable recommendation
 
-Write ONLY the narrative. No titles, XML, JSON, or formatting markers. Just clean prose.`;
+Respond with ONLY a JSON object in this exact format, no markdown fences:
+{"analysis": "<your narrative here>"}
+- "analysis": 2-3 paragraphs of plain text narrative, separated by \\n\\n
+- Use standard hyphens (-), never em dashes
+- Do not include any text outside the JSON object`;
 
   const userMessage = `I'm considering buying: ${purchaseDescription}. The cost is ${purchaseAmount} ${profile.currency}. Please interpret my Monte Carlo simulation results.`;
 
@@ -553,11 +572,27 @@ export async function POST(request: NextRequest) {
       purchaseAmount
     );
 
-    const analysis = await callClaude(systemPrompt, userMessage);
+    const { data: analysisData, source: analysisSource, attempts } =
+      await callClaudeWithValidation({
+        callFn: () => callClaude(systemPrompt, userMessage),
+        schema: simulateAnalysisSchema,
+        fallback: SIMULATE_ANALYSIS_FALLBACK,
+        retryCallFn: (errorDetail) =>
+          callClaude(
+            systemPrompt + buildRetrySuffix(errorDetail),
+            userMessage
+          ),
+      });
+
+    if (analysisSource === "fallback") {
+      console.warn(
+        `[/api/simulate] LLM output validation failed after ${attempts} attempts. Using fallback.`
+      );
+    }
 
     // --- Assemble response ---
     const result: ExtendedSimulationResult = {
-      analysis: analysis.trim(),
+      analysis: analysisData.analysis,
       projectedBalances: projections.map((p) => ({
         date: p.date,
         withPurchase: p.withPurchase,
@@ -573,7 +608,11 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(
-      { success: true, data: result } satisfies APIResponse<ExtendedSimulationResult>,
+      {
+        success: true,
+        data: result,
+        validated: analysisSource !== "fallback",
+      },
       { status: 200 }
     );
   } catch (error) {
