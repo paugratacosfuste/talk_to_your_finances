@@ -2,7 +2,7 @@
 
 const DEFAULT_QUESTIONS = [
   'What did I spend the most on last month?',
-  'How much did I spend on restaurants in April 2025?',
+  'How much did I spend on restaurants in April 2020?',
   'What are my top 5 merchants?',
   'Am I spending more or less over time?',
   'What was my biggest single purchase?',
