@@ -1,39 +1,111 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { APIResponse, ChatMessage } from '@/types';
 import { callClaude } from '@/utils/claudeClient';
 import { buildLLMContext } from '@/utils/buildLLMContext';
 import { getMockData } from '@/data/mockData';
-import type { ChatMessage, APIResponse } from '@/types';
 
-export async function POST(req: NextRequest) {
+interface ChatRequestBody {
+  message?: string;
+  history?: ChatMessage[];
+}
+
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_REPLY_CHARS = 1200;
+
+function buildJsonOnlyPrompt(systemPrompt: string): string {
+  return `${systemPrompt}
+
+RESPONSE FORMAT (STRICT)
+Return ONLY valid JSON. No Markdown, no code fences, no extra text.
+Schema:
+{
+  "reply": string,
+  "isOnTopic": boolean
+}`;
+}
+
+function parseClaudeJson(raw: string): { reply: string; isOnTopic: boolean } | null {
   try {
-    const body = await req.json();
-    const { message, history } = body as {
-      message: string;
-      history?: ChatMessage[];
-    };
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      typeof parsed.reply !== 'string' ||
+      typeof parsed.isOnTopic !== 'boolean'
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Message is required.' } satisfies APIResponse<never>,
-        { status: 400 }
-      );
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as ChatRequestBody;
+    const message = body.message?.trim();
+    const history = Array.isArray(body.history) ? body.history : [];
+    const trimmedHistory = history
+      .filter(
+        (msg): msg is ChatMessage =>
+          msg !== null &&
+          typeof msg === 'object' &&
+          (msg.role === 'user' || msg.role === 'assistant') &&
+          typeof msg.content === 'string' &&
+          msg.content.trim().length > 0
+      )
+      .slice(-MAX_HISTORY_MESSAGES);
+
+    if (!message) {
+      const response: APIResponse<{ reply: string }> = {
+        success: false,
+        error: 'Message is required.',
+      };
+      return NextResponse.json(response, { status: 400 });
     }
 
-    const data = getMockData();
-    const systemPrompt = buildLLMContext(data);
+    const { transactions, profile } = getMockData();
+    const basePrompt = buildLLMContext({ transactions, profile });
+    const systemPrompt = buildJsonOnlyPrompt(basePrompt);
 
-    const reply = await callClaude(systemPrompt, message, history ?? []);
+    const rawResponse = await callClaude(systemPrompt, message, trimmedHistory);
+    const parsed = parseClaudeJson(rawResponse);
 
-    return NextResponse.json(
-      { success: true, data: { reply } } satisfies APIResponse<{ reply: string }>,
-      { status: 200 }
-    );
+    if (!parsed || parsed.reply.trim().length === 0) {
+      const response: APIResponse<{ reply: string }> = {
+        success: true,
+        data: {
+          reply:
+            "I couldn't parse that response. Try asking in a different way, like a specific category or date range.",
+        },
+      };
+      return NextResponse.json(response, { status: 200 });
+    }
+
+    if (!parsed.isOnTopic) {
+      const response: APIResponse<{ reply: string }> = {
+        success: true,
+        data: {
+          reply:
+            'I can only answer questions about your transactions and spending. Try asking about a category, merchant, or time period.',
+        },
+      };
+      return NextResponse.json(response, { status: 200 });
+    }
+
+    const safeReply = parsed.reply.trim().slice(0, MAX_REPLY_CHARS);
+
+    const response: APIResponse<{ reply: string }> = {
+      success: true,
+      data: { reply: safeReply },
+    };
+
+    return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unexpected error occurred.';
-    return NextResponse.json(
-      { success: false, error: errorMessage } satisfies APIResponse<never>,
-      { status: 500 }
-    );
+    const response: APIResponse<{ reply: string }> = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unexpected error.',
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }
