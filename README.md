@@ -57,7 +57,25 @@ transactions_training_data.csv
                               └── /api/diary     -> Claude (first-person narrative)
 ```
 
-**Data flow for Simulator** (the most complex route):
+## Views in Detail
+
+### Dashboard
+
+**What the user sees:** Balance history line chart, monthly spending bars, category breakdown donut, scrollable transaction list, upcoming bills, and account cards. A time-period filter (1M/3M/6M/All) recomputes every metric on the fly.
+
+**Under the hood:** All data is client-side. The `useFinancialData` hook wraps the deterministic mock data generator and exposes computed metrics (totals, breakdowns, balance history). Charts are rendered with recharts (`BalanceChart`, `CategoryBreakdown`). No API calls are made — the dashboard is a pure data-visualization layer.
+
+### Chat
+
+**What the user sees:** A conversational interface styled like a messaging app. The user types a question (or picks a suggested question) and receives a grounded answer about their spending. Conversation history is preserved across turns.
+
+**Under the hood:** `ChatView` manages message state and sends `{ message, history }` to `/api/chat`. The API route builds a compressed financial context (last 6 months of categorised spending, top merchants, recent transactions) via `buildLLMContext`, injects it as a system prompt, and sends the conversation to Claude. Claude responds with a JSON object containing `{ reply, isOnTopic }`. Off-topic messages are filtered server-side — if `isOnTopic` is false, a redirect message is returned instead. Replies are capped at 1,200 characters. History is trimmed to the last 12 messages to stay within the context window.
+
+### Simulator
+
+**What the user sees:** A purchase input field ("MacBook Pro" or "$200 sneakers"), followed by risk badges (low/medium/high, can-afford), a Claude-written narrative analysis, a 6-month projection chart with P10/P50/P90 confidence bands, an ML-predicted category forecast bar chart, and a savings runway calculator.
+
+**Under the hood:** This is the most complex route. The full data flow:
 1. Parse purchase description and optional amount from the request body
 2. If no amount is provided, ask Claude to estimate the price
 3. Compute a personal finance model from transaction history (avg income, avg expenses, expense std dev, top categories)
@@ -67,6 +85,100 @@ transactions_training_data.csv
 7. Compute P10/P50/P90 percentiles at each month and a deterministic risk assessment
 8. Send all numeric results to Claude as context; Claude writes the narrative interpretation only
 9. Validate Claude's JSON output against a Zod schema; retry once on failure; fall back to a typed default if both attempts fail
+
+The category forecast and savings runway sections are computed entirely client-side from `spending_model.json` — they render immediately without an API call.
+
+### Roast My Spending
+
+**What the user sees:** A period toggle (Past Week / Past Month), a "Roast Me" button, their k-means spending persona card, the roast itself (3-4 paragraphs of targeted financial comedy), a summary card (total spent, worst category, wildest transaction, estimated savings potential), and a collapsible "Grounding Sources" section showing which knowledge base chunks informed the roast.
+
+**Under the hood:** Before calling the API, the frontend runs the full RAG pipeline client-side:
+1. Lazy-loads precomputed sentence-transformer embeddings and the financial knowledge base on first request
+2. Builds a spending profile query from category percentages, savings rate, and persona label
+3. Runs hybrid retrieval: keyword overlap (60% weight) + cosine similarity against 384-dim embeddings (40% weight), returning the top-4 chunks
+4. Formats the retrieved chunks into a `ragContext` block and sends it alongside the period and persona to `/api/roast`
+
+The API route filters transactions to the selected period, computes category totals and top merchants, injects the RAG context and persona into Claude's system prompt, and requests a roast. The response is validated against a Zod schema. The `savingsPotential` estimate is clamped to the actual total spent as a sanity check.
+
+### Your Money's Diary
+
+**What the user sees:** A month picker (Jan–Apr 2020) with arrow navigation, a "Generate Diary" button, the diary entry itself (4-6 paragraphs of first-person narrative from the money's perspective), highlight badges, a list of Isolation Forest anomaly-flagged transactions with expandable explanations, and a collapsible month-by-category spending heatmap.
+
+**Under the hood:** `DiaryView` sends the selected month to `/api/diary`. The API route filters transactions to that month, computes income/expense totals, builds a list of top categories and merchant names, and prompts Claude to write a first-person diary entry as the user's money — referencing specific merchants, amounts, and categories. The response is validated to ensure a narrative (100-8,000 chars) and 1-6 highlight strings.
+
+Anomaly detection is client-side: the component fetches `anomaly_scores.json` on mount and cross-references it with the month's transactions. Flagged transactions display an orange dot; clicking it expands a human-readable explanation (e.g., "This groceries spend is 3.2x your monthly average"). The `SpendHeatmap` component renders a months-by-categories grid with intensity-scaled cells.
+
+## API Routes
+
+All four API routes follow the same pattern: they are Next.js App Router `POST` handlers in `src/app/api/`, they share the same `callClaude` wrapper, and they return a consistent `APIResponse<T>` envelope (`{ success, data?, error? }`).
+
+| Route | Receives | Returns | Claude's role |
+|-------|----------|---------|---------------|
+| `/api/chat` | `{ message, history }` | `{ reply }` | Answers the user's question grounded in financial context; classifies on-topic/off-topic |
+| `/api/simulate` | `{ purchaseDescription, amount? }` | `{ analysis, projectedBalances, canAfford, riskLevel }` | Writes narrative interpretation of pre-computed simulation results; optionally estimates purchase price |
+| `/api/roast` | `{ period, persona?, ragContext? }` | `{ roastText, weekSummary, savingsPotential }` | Generates a humorous spending critique grounded in RAG-retrieved financial knowledge |
+| `/api/diary` | `{ month }` | `{ narrative, highlights, totalSpent, totalIncome }` | Writes a first-person diary entry from the money's perspective |
+
+**LLM output validation** is shared across all routes via `llmValidation.ts`. The pipeline: (1) extract the first JSON object from the raw response (handles code fences and prose), (2) validate against a route-specific Zod schema, (3) on failure, retry once with an error-correcting prompt suffix, (4) fall back to a typed default if both attempts fail. This ensures every route returns well-typed data even if Claude produces malformed output.
+
+**Context building** is handled by `buildLLMContext.ts`, which compresses the full transaction dataset into a ~2,000-token system prompt: user profile, dataset overview, top merchants, 6 months of categorised spending summaries, and the 10 most recent transactions.
+
+## RAG System
+
+The Roast feature uses a lightweight retrieval-augmented generation pipeline to prevent generic financial advice. The system has three parts:
+
+**Knowledge base** (`src/data/finance_knowledge_base.json`): 30 hand-curated chunks covering dining benchmarks, subscription traps, savings rules, grocery optimisation, and spending psychology. Each chunk has an ID, topic, text, and keyword tags. Example: "Food delivery apps add a 30-40% markup compared to ordering directly."
+
+**Precomputed embeddings** (`public/finance_embeddings.json`): Each chunk is encoded offline by `precompute_embeddings.py` using `all-MiniLM-L6-v2` (384-dimensional vectors, runs entirely on CPU, no API calls). The embeddings are serialised to JSON and served as a static asset.
+
+**Hybrid retrieval** (`src/utils/ragRetriever.ts`, runs in the browser):
+1. Build a user profile query string from spending category percentages, savings rate, and persona label
+2. Construct a bag-of-characters query vector (character codes mapped into a 384-dim vector, then L2-normalised)
+3. For each chunk, compute two scores:
+   - **Keyword overlap** (60% weight): count of shared tokens between query and chunk tags/topic
+   - **Cosine similarity** (40% weight): dot product between query vector and precomputed embedding
+4. Blend scores, sort descending, return top-4 chunks
+5. Format chunks into a prompt block and inject into Claude's system prompt
+
+This hybrid approach means the retriever works without a live embedding model at runtime — all the expensive computation happens offline.
+
+## Anomaly Detection
+
+Unusual transactions are flagged by an Isolation Forest model trained offline in `scripts/anomaly_detection.py`:
+
+1. **Feature engineering**: Each transaction is represented by its amount, day-of-week (0-6), and one-hot-encoded category
+2. **Model**: scikit-learn `IsolationForest` with a 5% contamination rate (expects ~5% of transactions to be anomalous)
+3. **Explanation generation**: For each flagged transaction, the script computes how the amount compares to the category's monthly average and generates a human-readable reason (e.g., "This groceries spend is 3.2x your monthly average")
+4. **Output**: Per-transaction anomaly scores, boolean labels, and reasons are written to `public/anomaly_scores.json`
+
+At runtime, `DiaryView` fetches this JSON on mount and cross-references it with the current month's transactions. Anomalous transactions appear in a dedicated "Unusual Transactions" panel with expandable explanations.
+
+## Spending Personas
+
+The persona system uses k-means clustering to assign each user a spending personality:
+
+1. **Feature matrix**: `persona_clustering.py` pivots transactions into a months-by-categories matrix and standardises with `StandardScaler`
+2. **Clustering**: KMeans with k=4 clusters; the dominant cluster is matched to a predefined persona by comparing category signal strengths
+3. **Four personas**:
+   - **The Weekend Spender** — disproportionate entertainment and restaurant spending
+   - **The Subscription Hoarder** — high recurring subscription costs relative to income
+   - **The Grocery Optimizer** — spending concentrated in essentials, low discretionary
+   - **The Lifestyle Inflater** — spending scales with (or exceeds) income across all categories
+4. **Output**: The persona label, a description, and top deviation features are written to `public/persona.json`
+
+The persona surfaces in two places: as a card in the Roast view (showing the label, description, and trait badges) and as context injected into Claude's roast prompt to shape the tone and targets of the critique.
+
+## Frontend Architecture
+
+**View-based layout**: The app is wrapped in an `IPhoneFrame` component that renders a phone-shaped container. A `LoginPage` with a particle-text animation gates entry. Once logged in, five views (Dashboard, Chat, Simulator, Roast, Diary) are swapped via a `TabNav` bottom navigation bar. The active tab ID is lifted to the root `page.tsx` component; each tab renders its corresponding view component.
+
+**Component organisation**: Components are grouped by feature (`Chat/`, `Dashboard/`, `Diary/`, `Roast/`, `Simulator/`) with shared UI primitives in `ui/` (Button, Card, Input, LoadingSpinner, AnimateIn). Each feature folder contains a main view component and its sub-components (e.g., `ChatView` + `ChatBubble` + `ChatInput` + `SuggestedQuestions`).
+
+**Theme system**: A `ThemeProvider` wraps the app in a React context that exposes `{ theme, toggle }`. The theme defaults to dark mode and persists to `localStorage`. Toggling adds/removes a `dark` class on `<html>`, which drives CSS custom properties for all colours (backgrounds, text, borders, accent). The entire UI adapts — no component-level theme logic needed.
+
+**Charts**: All data visualisations use recharts — `AreaChart` for balance history and Monte Carlo projections (with gradient fills for confidence bands), `BarChart` for monthly spending and category forecasts, and a custom `SpendHeatmap` component for the month-by-category grid in the Diary view.
+
+**Animations**: framer-motion handles page transitions (`AnimatePresence`), chat bubble entrances, loading indicators (bouncing dots, typing dots), and fade-in effects on API results. The `AnimateIn` utility component provides reusable scroll-triggered animations.
 
 ## ML Pipeline
 
