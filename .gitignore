@@ -31,6 +31,8 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.example
+
 
 # vercel
 .vercel
@@ -45,3 +47,5 @@ PROJECT_BIBLE.md
 *.docx
 *.csv
 .pytest_cache/
+
+P1_EXECUTION_PLAN.md
